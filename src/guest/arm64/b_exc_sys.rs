@@ -1,10 +1,7 @@
 use crate::util::*;
 use super::*;
 
-pub fn disas_exc_sys<HT>(ctx: &mut EmuContext<Arm64GuestContext, HT>, insn: InsnType) -> Result<(), String>
-where
-    HT: host::HostContext<RegType = RegType>
-{
+pub fn disas_exc_sys(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
     (if extract(insn, 24, 1) == 1 {
         if extract(insn, 22, 2) == 0 {
             disas_system

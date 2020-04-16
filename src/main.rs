@@ -13,7 +13,7 @@ const ARM64_EXAMPLE: &'static [u8] = &[
 type CastSrc = u32;
 
 fn main() -> Result<(), String> {
-    let mut ctx = EmuContext {
+    let mut ctx = CodeGenContext {
         guest: Arm64GuestContext::new(ARM64_EXAMPLE),
         host: DumpIRHostContext::<RegType, CastSrc>::new(),
     };

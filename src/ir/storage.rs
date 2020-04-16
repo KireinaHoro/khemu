@@ -1,5 +1,6 @@
 extern crate num_traits;
 
+use std::fmt::{Display, Error, Formatter};
 use std::marker::PhantomData;
 
 // Denotes a value used in IR.  May correspond to
@@ -15,5 +16,11 @@ impl<T> KHVal<T> {
         Self {
             phantom: PhantomData,
         }
+    }
+}
+
+impl<T> Display for KHVal<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "{}", std::any::type_name::<T>())
     }
 }

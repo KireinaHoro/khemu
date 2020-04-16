@@ -1,12 +1,6 @@
 use super::*;
 
-pub fn disas_data_proc_reg<HT>(
-    ctx: &mut EmuContext<Arm64GuestContext, HT>,
-    insn: InsnType,
-) -> Result<(), String>
-where
-    HT: host::HostContext<RegType = RegType>,
-{
+pub fn disas_data_proc_reg(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
     let op0 = extract(insn, 30, 1);
     let op1 = extract(insn, 28, 1);
     let op2 = extract(insn, 21, 4);

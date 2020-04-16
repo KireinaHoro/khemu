@@ -1,8 +1,9 @@
 extern crate paste;
 
 use crate::guest::*;
+use crate::ir::op::*;
+use crate::ir::storage::*;
 use crate::util::*;
-use crate::*;
 
 mod facility;
 
@@ -10,26 +11,27 @@ pub type RegType = u64;
 pub type InsnType = u32;
 
 // disassembly facility
-pub struct Arm64GuestContext<'a> {
+pub struct Arm64GuestContext<'a, 'b> {
     code: &'a [u8],
     disas_pos: usize,
     // TODO(jsteward) properly allocate registers
-    xreg: [ir::KHVal<RegType>; 32],
+    xreg: [KHVal<RegType>; 32],
+    ops: Vec<Op<'b>>,
 }
 
-impl<'a> Arm64GuestContext<'a> {
+impl<'a, 'b> Arm64GuestContext<'a, 'b> {
     pub fn new(code: &'a [u8]) -> Self {
         Self {
             code,
             disas_pos: 0,
             xreg: Default::default(),
+            ops: Vec::new(),
         }
     }
 }
 
-impl<'a> GuestContext for Arm64GuestContext<'a> {
+impl<'a, 'b> GuestContext<'b> for Arm64GuestContext<'a, 'b> {
     type InsnType = InsnType;
-    type RegType = RegType;
 
     fn next_insn(&mut self) -> Option<Self::InsnType> {
         // we only support 4-byte RISC for now
@@ -47,41 +49,36 @@ impl<'a> GuestContext for Arm64GuestContext<'a> {
         }
     }
 
-    fn disas_loop<HT>(ctx: &mut EmuContext<Self, HT>) -> Result<(), String>
-    where
-        HT: host::HostContext<RegType = RegType>,
-    {
+    fn push_op(&mut self, op: Op<'b>) {
+        self.ops.push(op)
+    }
+
+    fn get_ops(&mut self) -> Vec<Op> {
+        let mut ret = Vec::new();
+        std::mem::swap(&mut ret, &mut self.ops);
+        ret
+    }
+
+    fn disas_block(&mut self) -> Result<(), String> {
         loop {
-            if let Some(insn) = ctx.guest.next_insn() {
-                disas_single(ctx, insn)?;
+            if let Some(insn) = self.next_insn() {
+                disas_single(self, insn)?;
             } else {
-                println!("disas completed");
-                break;
+                return Err("no more instructions in GuestContext".to_owned());
             }
         }
-
-        Ok(())
     }
 }
 
 // AArch64 Opcodes
-fn unallocated<HT>(
-    ctx: &mut EmuContext<Arm64GuestContext, HT>,
-    insn: InsnType,
-) -> Result<(), String>
-where
-    HT: host::HostContext<RegType = RegType>,
-{
+fn unallocated(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
     Err(format!("unallocated opcode; instruction: 0x{:08x}", insn))
 }
 
 macro_rules! disas_category {
     ( $name:ident, $start:expr, $len:expr, $( [ $($opc:expr),* ], $handler:ident ),* ) => {
         paste::item! {
-            fn [< disas_ $name >]<HT>(ctx: &mut EmuContext<Arm64GuestContext, HT>, insn: InsnType) -> Result<(), String>
-            where
-                HT: host::HostContext<RegType = RegType>
-            {
+            fn [< disas_ $name >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
                 (match extract(insn, $start, $len) {
                     $(
                         $($opc)|* => paste::expr! { [< disas_ $handler >] },
@@ -97,10 +94,7 @@ macro_rules! disas_subcategory {
     ( $name:ident, $start:expr, $len:expr, $( [ $($opc:expr),* ], $handler:ident ),* ) => {
         mod $name;
         paste::item! {
-            fn [< disas_ $name >]<HT>(ctx: &mut EmuContext<Arm64GuestContext, HT>, insn: InsnType) -> Result<(), String>
-            where
-                HT: host::HostContext<RegType = RegType>
-            {
+            fn [< disas_ $name >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
                 (match extract(insn, $start, $len) {
                     $(
                         $($opc)|* => paste::expr! { $name :: [< disas_ $handler >] },
@@ -117,10 +111,7 @@ macro_rules! disas_stub {
         $(
             paste::item! {
                 #[allow(dead_code)]
-                pub fn [< disas_ $handler >]<HT>(ctx: &mut EmuContext<Arm64GuestContext, HT>, insn: InsnType) -> Result<(), String>
-                where
-                    HT: host::HostContext<RegType = RegType>
-                {
+                pub fn [< disas_ $handler >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
                     Err(format!("{} not implemented", stringify!($handler)))
                 }
             }

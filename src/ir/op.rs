@@ -12,7 +12,7 @@ gen_ops! {
         //override_maker: And, Add, Call;
     },
     KHVal<f64> {
-        unary: Mov, ExtU, ExtS;
-        binary: Add, Sub, Mul, Div;
+        unary: FMov;
+        binary: FAdd, FSub, FMul, FDiv;
     }
 }

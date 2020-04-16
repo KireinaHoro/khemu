@@ -1,11 +1,7 @@
 use super::*;
-use crate::*;
 use facility::*;
 
-pub fn disas_ldst_pair<HT>(ctx: &mut EmuContext<Arm64GuestContext, HT>, insn: InsnType) -> Result<(), String>
-where
-    HT: host::HostContext<RegType = RegType>
-{
+pub fn disas_ldst_pair(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
     let rt = extract(insn, 0, 5) as usize;
     let rn = extract(insn, 5, 5) as usize;
     let rt2 = extract(insn, 10, 5) as usize;
@@ -45,7 +41,7 @@ where
         1 => { postindex = true; wback = true; },
         2 => { postindex = false; },
         3 => { postindex = false; wback = true; },
-        _ => return Err("unmatched index".to_string())
+        _ => return Err("unmatched index".to_owned())
     }
 
     if rn == 31 { // sp
@@ -54,13 +50,10 @@ where
 
     let dirty_addr = read_cpu_reg_sp(ctx, rn, true);
 
-    Err("ldst_pair work in progress".to_string())
+    Err("ldst_pair work in progress".to_owned())
 }
 
-fn check_sp_alignment<HT>(_ctx: &mut EmuContext<Arm64GuestContext, HT>)
-where
-    HT: host::HostContext<RegType = RegType>
-{
+fn check_sp_alignment(_ctx: &mut Arm64GuestContext) {
     /* sp alignment check as specified in AArch64 omitted */
 }
 

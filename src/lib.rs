@@ -3,7 +3,7 @@ pub mod host;
 pub mod ir;
 pub mod util;
 
-pub struct EmuContext<GT, HT>
+pub struct CodeGenContext<GT, HT>
 where
     GT: guest::GuestContext,
     HT: host::HostContext,

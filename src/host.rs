@@ -1,14 +1,11 @@
-extern crate num_traits;
-
-use super::ir;
-pub use ir::Emitter;
-use num_traits::Num;
+use super::ir::op::Op;
 
 pub mod arm64;
 pub mod dump_ir;
 
 pub trait HostContext {
-    type RegType: Num;
-    type EM: Emitter<ValType = Self::RegType>;
-    fn get_emitter(&mut self) -> &mut Self::EM;
+    // emit host code for an Op block
+    fn emit_block(&mut self, ops: Vec<Op>);
+    // get all emitted instructions and reset buffer
+    fn get_insns(&mut self) -> Vec<u8>;
 }

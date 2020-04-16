@@ -1,18 +1,18 @@
-extern crate num_traits;
-
 pub mod arm64;
 
-use crate::*;
-use num_traits::Num;
+use crate::ir::op::Op;
 
-pub trait GuestContext
+pub trait GuestContext<'a>
 where
     Self: Sized,
 {
-    type RegType: Num;
     type InsnType;
+    // fetch a single guest instruction
     fn next_insn(&mut self) -> Option<Self::InsnType>;
-    fn disas_loop<HT>(ctx: &mut EmuContext<Self, HT>) -> Result<(), String>
-    where
-        HT: host::HostContext<RegType = Self::RegType>;
+    // push an Op into the buffer
+    fn push_op(&mut self, op: Op<'a>);
+    // get all Ops in buffer and reset buffer
+    fn get_ops(&mut self) -> Vec<Op<'a>>;
+    // run disassembly loop for a block of guest code
+    fn disas_block(&mut self) -> Result<(), String>;
 }
