@@ -6,7 +6,12 @@ use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
 
 // trait for host storage assignment
-pub trait HostStorage: Default + Display {}
+// all implementers must provide support for immediate numbers
+// a real host storage will probably support registers and memory as well
+pub trait HostStorage: Default + Display {
+    fn make_u64(v: u64) -> Self;
+    fn make_f64(v: f64) -> Self;
+}
 
 // valid value types
 #[derive(Debug, PartialEq)]
@@ -25,7 +30,7 @@ impl Display for ValueType {
 #[derive(Debug)]
 pub struct KHVal<R: HostStorage> {
     pub ty: ValueType,
-    storage: RefCell<R>,
+    pub storage: RefCell<R>,
 }
 
 impl<R: HostStorage> KHVal<R> {

@@ -14,6 +14,17 @@ where
 
     // allocate a new unassigned KHVal
     fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>>;
+    // allocate u64 immediate value
+    fn alloc_u64(&mut self, v: u64) -> Rc<KHVal<R>> {
+        let ret = self.alloc_val(ValueType::U64);
+        *ret.storage.borrow_mut() = R::make_u64(v);
+        ret
+    }
+    fn alloc_f64(&mut self, v: f64) -> Rc<KHVal<R>> {
+        let ret = self.alloc_val(ValueType::F64);
+        *ret.storage.borrow_mut() = R::make_f64(v);
+        ret
+    }
     // get tracking weak pointers of allocated KHVals
     fn get_tracking(&self) -> &[Weak<KHVal<R>>];
     // run housekeeping on tracking

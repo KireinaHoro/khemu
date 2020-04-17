@@ -1,5 +1,4 @@
 use super::*;
-use crate::util::*;
 
 pub fn disas_exc_sys<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,

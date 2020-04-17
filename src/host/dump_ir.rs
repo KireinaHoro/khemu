@@ -18,16 +18,37 @@ impl DumpIRHostContext {
 }
 
 // dummy interface, no real allocation
-#[derive(Default)]
-pub struct DumpIRHostStorage {}
+pub enum DumpIRHostStorage {
+    ImmU64(u64),
+    ImmF64(f64),
+    Unassigned,
+}
 
-impl Display for DumpIRHostStorage {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "_")
+impl Default for DumpIRHostStorage {
+    fn default() -> Self {
+        DumpIRHostStorage::Unassigned
     }
 }
 
-impl HostStorage for DumpIRHostStorage {}
+impl Display for DumpIRHostStorage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            DumpIRHostStorage::Unassigned => write!(f, "_"),
+            DumpIRHostStorage::ImmF64(v) => write!(f, "{}", v),
+            DumpIRHostStorage::ImmU64(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+impl HostStorage for DumpIRHostStorage {
+    fn make_u64(v: u64) -> Self {
+        DumpIRHostStorage::ImmU64(v)
+    }
+
+    fn make_f64(v: f64) -> Self {
+        DumpIRHostStorage::ImmF64(v)
+    }
+}
 
 impl HostContext for DumpIRHostContext {
     type StorageType = DumpIRHostStorage;

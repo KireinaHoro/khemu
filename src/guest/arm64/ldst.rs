@@ -61,7 +61,11 @@ pub fn disas_ldst_pair<R: HostStorage>(
     }
 
     let dirty_addr = read_cpu_reg_sp(ctx, rn, true);
-    if !postindex {}
+    let offset = ctx.alloc_u64(offset);
+    if !postindex {
+        ctx.push_op(Op::make_add(&dirty_addr, &dirty_addr, &offset));
+    }
+    //let clean_addr =
 
     Err("ldst_pair work in progress".to_owned())
 }
