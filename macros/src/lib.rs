@@ -8,10 +8,10 @@ use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{braced, parse_macro_input, token, Ident, Result, Token, Type};
+use syn::{braced, parse_macro_input, token, Ident, Result, Token, Expr};
 
 struct GenOpSingle {
-    reg_type: Type,
+    reg_type: Expr,
     _brace: token::Brace,
     rules: Punctuated<OpRule, Token![;]>,
 }
@@ -109,11 +109,11 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let customs = custom
         .iter()
-        .map(|(v, t)| {
+        .map(|(v, _)| {
             let mnemonic = &v[0];
             let iter = v.iter().skip(1);
             quote! {
-                #mnemonic { #( #iter: &'a #t ),* },
+                #mnemonic { #( #iter: ::std::rc::Rc<crate::ir::storage::KHVal<R>> ),* },
             }
         })
         .into_iter();
@@ -129,11 +129,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let lower = mnemonic.to_string().to_lowercase();
             let fn_name = format_ident!("make_{}", lower);
             let params = v.iter().skip(1);
-            let args = params.clone();
+            let aa = params.clone();
+            let bb = params.clone();
             quote! {
-                impl<'a> Op<'a> {
-                    pub fn #fn_name(#( #params: &'a #t ),*) -> Self {
-                        Self::#mnemonic { #( #args ),* }
+                impl<R: crate::ir::storage::HostStorage> Op<R> {
+                    pub fn #fn_name(#( #params: ::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) -> Self {
+                        #( assert_eq!(#aa.ty, #t); )*
+                        Self::#mnemonic { #( #bb ),* }
                     }
                 }
             }
@@ -148,8 +150,8 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let args = params.clone();
             quote! {
                 Self::#mnemonic { #( #params ),* } => {
-                    write!(f, "{}\t", #_lower);
-                    #( write!(f, " {}", #args); )*
+                    write!(f, "{}\t", #_lower)?;
+                    #( write!(f, " {}", #args)?; )*
                     Ok(())
                 },
             }
@@ -158,9 +160,12 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let unaries = unary
         .iter()
-        .map(|(m, t)| {
+        .map(|(m, _)| {
             quote! {
-                #m { rd: &'a #t, rs1: &'a #t },
+                #m {
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                },
             }
         })
         .into_iter();
@@ -171,8 +176,12 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let lower = m.to_string().to_lowercase();
             let fn_name = format_ident!("make_{}", lower);
             quote! {
-                impl<'a> Op<'a> {
-                    pub fn #fn_name(rd: &'a #t, rs1: &'a #t) -> Self {
+                impl<R: crate::ir::storage::HostStorage> Op<R> {
+                    pub fn #fn_name(
+                        rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        assert_eq!(rd.ty, #t);
+                        assert_eq!(rs1.ty, #t);
                         Self::#m { rd, rs1 }
                     }
                 }
@@ -185,7 +194,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = m.to_string().to_lowercase();
             quote! {
                 Self::#m { rd, rs1 } => {
-                    write!(f, "{}\t {} {}", #_lower, rd, rs1);
+                    write!(f, "{}\t {} {}", #_lower, rd, rs1)?;
                     Ok(())
                 },
             }
@@ -194,9 +203,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let binaries = binary
         .iter()
-        .map(|(m, t)| {
+        .map(|(m, _)| {
             quote! {
-                #m { rd: &'a #t, rs1: &'a #t, rs2: &'a #t },
+                #m {
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs2: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                },
             }
         })
         .into_iter();
@@ -207,8 +220,14 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let lower = m.to_string().to_lowercase();
             let fn_name = format_ident!("make_{}", lower);
             quote! {
-                impl<'a> Op<'a> {
-                    pub fn #fn_name(rd: &'a #t, rs1: &'a #t, rs2: &'a #t) -> Self {
+                impl<R: crate::ir::storage::HostStorage> Op<R> {
+                    pub fn #fn_name(
+                        rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs2: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        assert_eq!(rd.ty, #t);
+                        assert_eq!(rs1.ty, #t);
+                        assert_eq!(rs2.ty, #t);
                         Self::#m { rd, rs1, rs2 }
                     }
                 }
@@ -221,7 +240,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = m.to_string().to_lowercase();
             quote! {
                 Self::#m { rd, rs1, rs2 } => {
-                    write!(f, "{}\t {} {} {}", #_lower, rd, rs1, rs2);
+                    write!(f, "{}\t {} {} {}", #_lower, rd, rs1, rs2)?;
                     Ok(())
                 },
             }
@@ -230,13 +249,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #[derive(Debug)]
-        pub enum Op<'a> {
+        pub enum Op<R: crate::ir::storage::HostStorage> {
             #( #unaries )*
             #( #binaries )*
             #( #customs )*
         }
 
-        impl<'a> ::std::fmt::Display for Op<'a> {
+        impl<R: crate::ir::storage::HostStorage> ::std::fmt::Display for Op<R> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
                 match self {
                     #( #unary_display )*

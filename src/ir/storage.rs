@@ -1,26 +1,53 @@
 extern crate num_traits;
 
-use std::fmt::{Display, Error, Formatter};
-use std::marker::PhantomData;
+use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
+use std::fmt::{Debug, Display, Error, Formatter};
+use std::hash::{Hash, Hasher};
 
-// Denotes a value used in IR.  May correspond to
-#[derive(Default, Debug, Hash)]
-pub struct KHVal<T> {
-    // TODO(jsteward) fill in register assignment logic
-    phantom: PhantomData<T>,
+// trait for host storage assignment
+pub trait HostStorage: Default + Display {}
+
+// valid value types
+#[derive(Debug, PartialEq)]
+pub enum ValueType {
+    U64,
+    F64,
 }
 
-// TODO(jsteward) implement proper allocation and release semantics
-impl<T> KHVal<T> {
-    pub fn new() -> Self {
+impl Display for ValueType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        Debug::fmt(self, f)
+    }
+}
+
+// Denotes a value used in IR.  May correspond to
+#[derive(Debug)]
+pub struct KHVal<R: HostStorage> {
+    pub ty: ValueType,
+    storage: RefCell<R>,
+}
+
+impl<R: HostStorage> KHVal<R> {
+    // allocate value with unassigned storage
+    pub fn new(ty: ValueType) -> Self {
         Self {
-            phantom: PhantomData,
+            ty,
+            storage: RefCell::new(Default::default()),
         }
     }
 }
 
-impl<T> Display for KHVal<T> {
+impl<R: HostStorage> Display for KHVal<R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", std::any::type_name::<T>())
+        let mut s = DefaultHasher::new();
+        (self as *const Self as u64).hash(&mut s);
+        write!(
+            f,
+            "<#{1:07x}, {2}, {0}>",
+            self.storage.borrow(),
+            s.finish() % 0x10000000,
+            self.ty
+        )
     }
 }

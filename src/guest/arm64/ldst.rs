@@ -1,7 +1,7 @@
 use super::*;
 use facility::*;
 
-pub fn disas_ldst_pair(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+pub fn disas_ldst_pair<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
     let rt = extract(insn, 0, 5) as usize;
     let rn = extract(insn, 5, 5) as usize;
     let rt2 = extract(insn, 10, 5) as usize;
@@ -53,7 +53,7 @@ pub fn disas_ldst_pair(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<()
     Err("ldst_pair work in progress".to_owned())
 }
 
-fn check_sp_alignment(_ctx: &mut Arm64GuestContext) {
+fn check_sp_alignment<R: HostStorage>(ctx: &mut Arm64GuestContext<R>) {
     /* sp alignment check as specified in AArch64 omitted */
 }
 

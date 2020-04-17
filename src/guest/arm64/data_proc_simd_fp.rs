@@ -1,6 +1,9 @@
 use super::*;
 
-pub fn disas_data_proc_simd_fp(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+pub fn disas_data_proc_simd_fp<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), String> {
     (if extract(insn, 28, 1) == 1 && extract(insn, 30, 1) == 0 {
         disas_data_proc_fp
     } else {

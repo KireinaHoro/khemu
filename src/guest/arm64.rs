@@ -7,30 +7,34 @@ use crate::util::*;
 
 mod facility;
 
-pub type RegType = u64;
 pub type InsnType = u32;
 
 // disassembly facility
-pub struct Arm64GuestContext<'a, 'b> {
+pub struct Arm64GuestContext<'a, R: HostStorage> {
     code: &'a [u8],
     disas_pos: usize,
-    // TODO(jsteward) properly allocate registers
-    xreg: [KHVal<RegType>; 32],
-    ops: Vec<Op<'b>>,
+    // 32 general-purpose registers
+    xreg: Vec<Rc<KHVal<R>>>,
+    ops: Vec<Op<R>>,
+    // tracking Weak for allocated values
+    tracking: Vec<Weak<KHVal<R>>>,
 }
 
-impl<'a, 'b> Arm64GuestContext<'a, 'b> {
+impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
     pub fn new(code: &'a [u8]) -> Self {
         Self {
             code,
             disas_pos: 0,
-            xreg: Default::default(),
+            xreg: repeat_with(|| Rc::new(KHVal::new(ValueType::U64)))
+                .take(32)
+                .collect(),
             ops: Vec::new(),
+            tracking: Vec::new(),
         }
     }
 }
 
-impl<'a, 'b> GuestContext<'b> for Arm64GuestContext<'a, 'b> {
+impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {
     type InsnType = InsnType;
 
     fn next_insn(&mut self) -> Option<Self::InsnType> {
@@ -49,36 +53,62 @@ impl<'a, 'b> GuestContext<'b> for Arm64GuestContext<'a, 'b> {
         }
     }
 
-    fn push_op(&mut self, op: Op<'b>) {
+    fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>> {
+        let ret = Rc::new(KHVal::new(ty));
+        self.tracking.push(Rc::downgrade(&ret));
+        ret
+    }
+
+    fn get_tracking(&self) -> &[Weak<KHVal<R>>] {
+        self.tracking.as_slice()
+    }
+
+    fn clean_tracking(&mut self) {
+        self.tracking.retain(|x| x.weak_count() > 0);
+    }
+
+    fn push_op(&mut self, op: Op<R>) {
         self.ops.push(op)
     }
 
-    fn get_ops(&mut self) -> Vec<Op> {
+    fn get_ops(&mut self) -> Vec<Op<R>> {
         let mut ret = Vec::new();
         std::mem::swap(&mut ret, &mut self.ops);
         ret
     }
 
-    fn disas_block(&mut self) -> Result<(), String> {
+    fn disas_block(&mut self, block_size: u32) -> Result<(), String> {
+        let mut i = 0;
         loop {
+            if i > block_size {
+                // block size reached
+                return Ok(());
+            }
             if let Some(insn) = self.next_insn() {
                 disas_single(self, insn)?;
             } else {
-                return Err("no more instructions in GuestContext".to_owned());
+                // no more instruction left
+                return Ok(());
             }
+            i += 1;
         }
     }
 }
 
 // AArch64 Opcodes
-fn unallocated(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+#[allow(dead_code, unused)]
+fn unallocated<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), String> {
+    // TODO(jsteward) we should handle this as SIGILL
     Err(format!("unallocated opcode; instruction: 0x{:08x}", insn))
 }
 
 macro_rules! disas_category {
     ( $name:ident, $start:expr, $len:expr, $( [ $($opc:expr),* ], $handler:ident ),* ) => {
         paste::item! {
-            fn [< disas_ $name >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+            fn [< disas_ $name >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
                 (match extract(insn, $start, $len) {
                     $(
                         $($opc)|* => paste::expr! { [< disas_ $handler >] },
@@ -94,7 +124,7 @@ macro_rules! disas_subcategory {
     ( $name:ident, $start:expr, $len:expr, $( [ $($opc:expr),* ], $handler:ident ),* ) => {
         mod $name;
         paste::item! {
-            fn [< disas_ $name >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+            fn [< disas_ $name >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
                 (match extract(insn, $start, $len) {
                     $(
                         $($opc)|* => paste::expr! { $name :: [< disas_ $handler >] },
@@ -110,8 +140,8 @@ macro_rules! disas_stub {
     ( $($handler:ident),* ) => {
         $(
             paste::item! {
-                #[allow(dead_code)]
-                pub fn [< disas_ $handler >](ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+                #[allow(dead_code, unused)]
+                pub fn [< disas_ $handler >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
                     Err(format!("{} not implemented", stringify!($handler)))
                 }
             }
@@ -156,6 +186,8 @@ disas_subcategory!(ldst, 24, 6,
 
 mod data_proc_simd_fp;
 use data_proc_simd_fp::disas_data_proc_simd_fp;
+use std::iter::repeat_with;
+use std::rc::{Rc, Weak};
 
 #[rustfmt::skip]
 disas_subcategory!(b_exc_sys, 25, 7,

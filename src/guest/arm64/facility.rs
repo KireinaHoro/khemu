@@ -1,7 +1,14 @@
 use super::*;
 
-pub fn read_cpu_reg_sp(ctx: &mut Arm64GuestContext, reg: usize, sf: bool) -> KHVal<RegType> {
-    let v = KHVal::new();
-    (if sf { Op::make_mov } else { Op::make_extu })(&v, &ctx.xreg[reg]);
+pub fn read_cpu_reg_sp<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    reg: usize,
+    sf: bool,
+) -> Rc<KHVal<R>> {
+    let v = ctx.alloc_val(ValueType::U64);
+    ctx.push_op((if sf { Op::make_mov } else { Op::make_extu })(
+        Rc::clone(&v),
+        Rc::clone(&ctx.xreg[reg]),
+    ));
     v
 }

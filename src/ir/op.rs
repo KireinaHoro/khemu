@@ -1,9 +1,9 @@
-use super::storage::KHVal;
+use super::storage::ValueType;
 use macros::gen_ops;
 
 #[rustfmt::skip]
 gen_ops! {
-    KHVal<u64> {
+    ValueType::U64 {
         unary: Neg, Not, Mov, Bswap, ExtU, ExtS;
         binary: Add, Sub, Mul, Div, Rem, Remu; // arithmetic
         binary: And, Or, Xor, Andc, Eqv, Nand, Nor, Orc, Clz, Ctz; // logical
@@ -11,7 +11,7 @@ gen_ops! {
         custom: Call, rd, func, rs1, rs2, rs3, rs4;
         //override_maker: And, Add, Call;
     },
-    KHVal<f64> {
+    ValueType::F64 {
         unary: FMov;
         binary: FAdd, FSub, FMul, FDiv;
     }

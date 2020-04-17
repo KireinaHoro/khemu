@@ -1,6 +1,9 @@
 use super::*;
 
-pub fn disas_data_proc_reg(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+pub fn disas_data_proc_reg<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), String> {
     let op0 = extract(insn, 30, 1);
     let op1 = extract(insn, 28, 1);
     let op2 = extract(insn, 21, 4);

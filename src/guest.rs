@@ -1,18 +1,29 @@
 pub mod arm64;
 
 use crate::ir::op::Op;
+use crate::ir::storage::*;
+use std::rc::{Rc, Weak};
 
-pub trait GuestContext<'a>
+pub trait GuestContext<R: HostStorage>
 where
     Self: Sized,
 {
     type InsnType;
     // fetch a single guest instruction
     fn next_insn(&mut self) -> Option<Self::InsnType>;
+
+    // allocate a new unassigned KHVal
+    fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>>;
+    // get tracking weak pointers of allocated KHVals
+    fn get_tracking(&self) -> &[Weak<KHVal<R>>];
+    // run housekeeping on tracking
+    fn clean_tracking(&mut self);
+
     // push an Op into the buffer
-    fn push_op(&mut self, op: Op<'a>);
+    fn push_op(&mut self, op: Op<R>);
     // get all Ops in buffer and reset buffer
-    fn get_ops(&mut self) -> Vec<Op<'a>>;
+    fn get_ops(&mut self) -> Vec<Op<R>>;
+
     // run disassembly loop for a block of guest code
-    fn disas_block(&mut self) -> Result<(), String>;
+    fn disas_block(&mut self, block_size: u32) -> Result<(), String>;
 }

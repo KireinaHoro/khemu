@@ -5,8 +5,8 @@ pub mod util;
 
 pub struct CodeGenContext<GT, HT>
 where
-    GT: guest::GuestContext,
     HT: host::HostContext,
+    GT: guest::GuestContext<HT::StorageType>,
 {
     pub guest: GT,
     pub host: HT,

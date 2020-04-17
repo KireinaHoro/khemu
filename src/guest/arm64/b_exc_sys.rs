@@ -1,7 +1,7 @@
 use crate::util::*;
 use super::*;
 
-pub fn disas_exc_sys(ctx: &mut Arm64GuestContext, insn: InsnType) -> Result<(), String> {
+pub fn disas_exc_sys<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
     (if extract(insn, 24, 1) == 1 {
         if extract(insn, 22, 2) == 0 {
             disas_system
