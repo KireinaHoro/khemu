@@ -4,8 +4,8 @@ use crate::guest::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::util::*;
-
-mod facility;
+use std::rc::{Rc, Weak};
+use std::iter::repeat_with;
 
 pub type InsnType = u32;
 
@@ -122,7 +122,6 @@ macro_rules! disas_category {
 
 macro_rules! disas_subcategory {
     ( $name:ident, $start:expr, $len:expr, $( [ $($opc:expr),* ], $handler:ident ),* ) => {
-        mod $name;
         paste::item! {
             fn [< disas_ $name >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
                 (match extract(insn, $start, $len) {
@@ -170,7 +169,6 @@ disas_subcategory!(data_proc_imm, 23, 6,
     [0x27], extract
 );
 
-mod data_proc_reg;
 use data_proc_reg::disas_data_proc_reg;
 
 #[rustfmt::skip]
@@ -184,10 +182,7 @@ disas_subcategory!(ldst, 24, 6,
     [0x19], ldst_ldapr_stlr
 );
 
-mod data_proc_simd_fp;
 use data_proc_simd_fp::disas_data_proc_simd_fp;
-use std::iter::repeat_with;
-use std::rc::{Rc, Weak};
 
 #[rustfmt::skip]
 disas_subcategory!(b_exc_sys, 25, 7,
@@ -198,3 +193,13 @@ disas_subcategory!(b_exc_sys, 25, 7,
     [0x6a], exc_sys,
     [0x6b], uncond_b_reg
 );
+
+// declare the submodules
+// IntelliJ Rust will not recognize if these are in macro definition
+mod b_exc_sys;
+mod data_proc_imm;
+mod data_proc_reg;
+mod data_proc_simd_fp;
+mod facility;
+mod ldst;
+mod sve;

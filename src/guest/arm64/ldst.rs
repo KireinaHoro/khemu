@@ -1,5 +1,5 @@
 use super::*;
-use facility::*;
+use super::facility::*;
 
 pub fn disas_ldst_pair<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
     let rt = extract(insn, 0, 5) as usize;
