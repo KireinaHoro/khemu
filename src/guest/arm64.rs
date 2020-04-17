@@ -4,8 +4,8 @@ use crate::guest::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::util::*;
-use std::rc::{Rc, Weak};
 use std::iter::repeat_with;
+use std::rc::{Rc, Weak};
 
 pub type InsnType = u32;
 

@@ -133,9 +133,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let bb = params.clone();
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
-                    pub fn #fn_name(#( #params: ::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) -> Self {
+                    pub fn #fn_name(#( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) -> Self {
                         #( assert_eq!(#aa.ty, #t); )*
-                        Self::#mnemonic { #( #bb ),* }
+                        Self::#mnemonic { #( #bb: ::std::rc::Rc::clone(#bb) ),* }
                     }
                 }
             }
@@ -178,11 +178,14 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                        rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
-                        Self::#m { rd, rs1 }
+                        Self::#m {
+                            rd: ::std::rc::Rc::clone(rd),
+                            rs1: ::std::rc::Rc::clone(rs1),
+                        }
                     }
                 }
             }
@@ -222,13 +225,17 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                        rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                        rs2: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
                         assert_eq!(rs2.ty, #t);
-                        Self::#m { rd, rs1, rs2 }
+                        Self::#m {
+                            rd: ::std::rc::Rc::clone(rd),
+                            rs1: ::std::rc::Rc::clone(rs1),
+                            rs2: ::std::rc::Rc::clone(rs2),
+                        }
                     }
                 }
             }

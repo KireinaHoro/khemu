@@ -7,8 +7,8 @@ pub fn read_cpu_reg_sp<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     ctx.push_op((if sf { Op::make_mov } else { Op::make_extu })(
-        Rc::clone(&v),
-        Rc::clone(&ctx.xreg[reg]),
+        &v,
+        &ctx.xreg[reg],
     ));
     v
 }
