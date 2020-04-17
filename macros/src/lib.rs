@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{braced, parse_macro_input, token, Ident, Result, Token, Expr};
+use syn::{braced, parse_macro_input, token, Expr, Ident, Result, Token};
 
 struct GenOpSingle {
     reg_type: Expr,

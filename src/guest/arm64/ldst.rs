@@ -65,7 +65,19 @@ pub fn disas_ldst_pair<R: HostStorage>(
     if !postindex {
         ctx.push_op(Op::make_add(&dirty_addr, &dirty_addr, &offset));
     }
-    //let clean_addr =
+    let clean_addr = clean_data_tbi(ctx, &dirty_addr);
+
+    if is_vector {
+        // TODO(jsteward) support for vector / fp
+        return unallocated(ctx, insn);
+    } else {
+        let rt = ctx.reg(rt);
+        let rt2 = ctx.reg(rt2);
+
+        if is_load {
+        } else {
+        }
+    }
 
     Err("ldst_pair work in progress".to_owned())
 }

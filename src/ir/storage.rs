@@ -47,11 +47,12 @@ impl<R: HostStorage> Display for KHVal<R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let mut s = DefaultHasher::new();
         (self as *const Self as u64).hash(&mut s);
+        // we hope that 5 digits are enough for display purposes
         write!(
             f,
-            "<#{1:07x}, {2}, {0}>",
+            "<#{1:05x}, {2}, {0}>",
             self.storage.borrow(),
-            s.finish() % 0x10000000,
+            s.finish() % 0x100000,
             self.ty
         )
     }

@@ -32,6 +32,20 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
             tracking: Vec::new(),
         }
     }
+
+    pub fn reg(&mut self, r: usize) -> Rc<KHVal<R>> {
+        assert!(r < 32);
+        if r == 31 {
+            self.alloc_u64(0)
+        } else {
+            Rc::clone(&self.xreg[r])
+        }
+    }
+
+    pub fn reg_sp(&self, r: usize) -> Rc<KHVal<R>> {
+        assert!(r < 32);
+        Rc::clone(&self.xreg[r])
+    }
 }
 
 impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {

@@ -8,6 +8,8 @@ gen_ops! {
         binary: Add, Sub, Mul, Div, Rem, Remu; // arithmetic
         binary: And, Or, Xor, Andc, Eqv, Nand, Nor, Orc, Clz, Ctz; // logical
         binary: Shl, Shr, Sar, Rotl, Rotr; // shifts / rotates
+        custom: ExtractU, rd, rs, ofs, len;
+        custom: ExtractS, rd, rs, ofs, len;
         custom: Call, rd, func, rs1, rs2, rs3, rs4;
         //override_maker: And, Add, Call;
     },
