@@ -41,6 +41,22 @@ impl<R: HostStorage> KHVal<R> {
             storage: RefCell::new(Default::default()),
         }
     }
+
+    // used to construct U64 value
+    pub fn u64(v: u64) -> Self {
+        Self {
+            ty: ValueType::U64,
+            storage: RefCell::new(R::make_u64(v)),
+        }
+    }
+
+    // used to construct F64 value
+    pub fn f64(v: f64) -> Self {
+        Self {
+            ty: ValueType::F64,
+            storage: RefCell::new(R::make_f64(v)),
+        }
+    }
 }
 
 impl<R: HostStorage> Display for KHVal<R> {

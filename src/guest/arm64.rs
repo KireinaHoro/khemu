@@ -18,6 +18,7 @@ pub struct Arm64GuestContext<'a, R: HostStorage> {
     ops: Vec<Op<R>>,
     // tracking Weak for allocated values
     tracking: Vec<Weak<KHVal<R>>>,
+    u64_cache: HashMap<u64, Rc<KHVal<R>>>,
 }
 
 impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
@@ -30,6 +31,7 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
                 .collect(),
             ops: Vec::new(),
             tracking: Vec::new(),
+            u64_cache: HashMap::new(),
         }
     }
 
@@ -73,6 +75,25 @@ impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {
         ret
     }
 
+    // override the default implementation to cache smaller immediate values
+    fn alloc_u64(&mut self, v: u64) -> Rc<KHVal<R>> {
+        match self.u64_cache.get(&v) {
+            None => {
+                let ret = Rc::new(KHVal::u64(v));
+                self.tracking.push(Rc::downgrade(&ret));
+                self.u64_cache.insert(v, Rc::clone(&ret));
+                ret
+            }
+            Some(r) => Rc::clone(r),
+        }
+    }
+
+    // override the default implementation to reduce substitution overhead
+    fn alloc_f64(&mut self, v: f64) -> Rc<KHVal<R>> {
+        let ret = Rc::new(KHVal::f64(v));
+        self.tracking.push(Rc::downgrade(&ret));
+        ret
+    }
     fn get_tracking(&self) -> &[Weak<KHVal<R>>] {
         self.tracking.as_slice()
     }
@@ -197,6 +218,7 @@ disas_subcategory!(ldst, 24, 6,
 );
 
 use data_proc_simd_fp::disas_data_proc_simd_fp;
+use std::collections::HashMap;
 
 #[rustfmt::skip]
 disas_subcategory!(b_exc_sys, 25, 7,

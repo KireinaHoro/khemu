@@ -20,11 +20,13 @@ where
         *ret.storage.borrow_mut() = R::make_u64(v);
         ret
     }
+    // allocate f64 immediate value
     fn alloc_f64(&mut self, v: f64) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::F64);
         *ret.storage.borrow_mut() = R::make_f64(v);
         ret
     }
+
     // get tracking weak pointers of allocated KHVals
     fn get_tracking(&self) -> &[Weak<KHVal<R>>];
     // run housekeeping on tracking
