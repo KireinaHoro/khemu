@@ -17,6 +17,7 @@ impl DumpIRHostContext {
 pub enum DumpIRHostStorage {
     ImmU64(u64),
     ImmF64(f64),
+    Named(String),
     Unassigned,
 }
 
@@ -30,6 +31,7 @@ impl Display for DumpIRHostStorage {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
             DumpIRHostStorage::Unassigned => write!(f, "_"),
+            DumpIRHostStorage::Named(name) => write!(f, "{}", name),
             DumpIRHostStorage::ImmF64(v) => write!(f, "{}", v),
             DumpIRHostStorage::ImmU64(v) => write!(f, "{}", v),
         }
@@ -43,6 +45,10 @@ impl HostStorage for DumpIRHostStorage {
 
     fn make_f64(v: f64) -> Self {
         DumpIRHostStorage::ImmF64(v)
+    }
+
+    fn make_named(name: String) -> Self {
+        DumpIRHostStorage::Named(name)
     }
 }
 

@@ -4,7 +4,7 @@ use crate::guest::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::util::*;
-use std::iter::repeat_with;
+use std::iter::*;
 use std::rc::{Rc, Weak};
 
 pub type InsnType = u32;
@@ -26,8 +26,17 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
         Self {
             code,
             disas_pos: 0,
-            xreg: repeat_with(|| Rc::new(KHVal::new(ValueType::U64)))
-                .take(32)
+            xreg: (0..32)
+                .map(|i| {
+                    Rc::new(KHVal::named(
+                        if i == 31 {
+                            "sp".to_owned()
+                        } else {
+                            format!("x{}", i)
+                        },
+                        ValueType::U64,
+                    ))
+                })
                 .collect(),
             ops: Vec::new(),
             tracking: Vec::new(),

@@ -11,6 +11,8 @@ use std::hash::{Hash, Hasher};
 pub trait HostStorage: Default + Display {
     fn make_u64(v: u64) -> Self;
     fn make_f64(v: f64) -> Self;
+    // used to create named data, such as guest fixed registers
+    fn make_named(name: String) -> Self;
 }
 
 // valid value types
@@ -39,6 +41,13 @@ impl<R: HostStorage> KHVal<R> {
         Self {
             ty,
             storage: RefCell::new(Default::default()),
+        }
+    }
+
+    pub fn named(name: String, ty: ValueType) -> Self {
+        Self {
+            ty,
+            storage: RefCell::new(R::make_named(name)),
         }
     }
 
