@@ -155,7 +155,7 @@ macro_rules! disas_stub {
             paste::item! {
                 #[allow(dead_code, unused)]
                 pub fn [< disas_ $handler >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), String> {
-                    Err(format!("{} not implemented", stringify!($handler)))
+                    Err(format!("insn 0x{:0x}: {} not implemented", insn, stringify!($handler)))
                 }
             }
         )*
