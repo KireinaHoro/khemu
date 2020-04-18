@@ -1,6 +1,8 @@
 use super::facility::*;
 use super::*;
 
+use std::convert::TryInto;
+
 pub fn disas_ldst_pair<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
@@ -13,12 +15,10 @@ pub fn disas_ldst_pair<R: HostStorage>(
     let is_load = extract(insn, 22, 1) == 1;
     let opc = extract(insn, 30, 2);
     let size: u32;
+    let postindex;
+    let wback;
 
     let mut is_signed = false;
-    let mut postindex = false;
-    let mut wback = false;
-    let mut offset = sextract(insn as u64, 15, 7);
-
     if opc == 3 {
         return unallocated(ctx, insn);
     }
@@ -32,23 +32,30 @@ pub fn disas_ldst_pair<R: HostStorage>(
             return unallocated(ctx, insn);
         }
     }
-    offset <<= size as u64;
+    let offset = sextract(insn as i64, 15, 7) << (size as i64);
 
     match index {
         0 => {
+            // signed offset with non-temporal hint
             if is_signed {
+                // no non-temporal hint version of LDPSW
                 return unallocated(ctx, insn);
             }
             postindex = false;
+            wback = false;
         }
         1 => {
+            // post-index
             postindex = true;
             wback = true;
         }
         2 => {
+            // signed offset, no wback
             postindex = false;
+            wback = false;
         }
         3 => {
+            // pre-index
             postindex = false;
             wback = true;
         }
@@ -61,9 +68,15 @@ pub fn disas_ldst_pair<R: HostStorage>(
     }
 
     let dirty_addr = read_cpu_reg_sp(ctx, rn, true);
-    let offset = ctx.alloc_u64(offset);
+    let offset_val = ctx.alloc_u64(offset.abs().try_into().unwrap());
+    let size = 1 << size as u64;
+    let size_val = ctx.alloc_u64(size);
     if !postindex {
-        ctx.push_op(Op::make_add(&dirty_addr, &dirty_addr, &offset));
+        ctx.push_op((if offset >= 0 {
+            Op::make_add
+        } else {
+            Op::make_sub
+        })(&dirty_addr, &dirty_addr, &offset_val));
     }
     let clean_addr = clean_data_tbi(ctx, &dirty_addr);
 
