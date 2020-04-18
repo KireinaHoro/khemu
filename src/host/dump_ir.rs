@@ -5,15 +5,11 @@ use crate::ir::op::*;
 use crate::ir::storage::HostStorage;
 use std::fmt::{Display, Error, Formatter};
 
-pub struct DumpIRHostContext {
-    content: String,
-}
+pub struct DumpIRHostContext {}
 
 impl DumpIRHostContext {
     pub fn new() -> Self {
-        Self {
-            content: String::new(),
-        }
+        Self {}
     }
 }
 

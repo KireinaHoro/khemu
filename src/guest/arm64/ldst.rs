@@ -75,13 +75,58 @@ pub fn disas_ldst_pair<R: HostStorage>(
         let rt2 = ctx.reg(rt2);
 
         if is_load {
+            // do not modify rt before recognizing any exception from the second load
+            let tmp = ctx.alloc_val(ValueType::U64);
+            do_ldst(
+                ctx,
+                is_load,
+                &tmp,
+                &clean_addr,
+                MemOp::from_size(size) | MemOp::from_sign(is_signed),
+            );
+            ctx.push_op(Op::make_add(&clean_addr, &clean_addr, &size_val));
+            do_ldst(
+                ctx,
+                is_load,
+                &rt2,
+                &clean_addr,
+                MemOp::from_size(size) | MemOp::from_sign(is_signed),
+            );
+            ctx.push_op(Op::make_mov(&rt, &tmp));
         } else {
+            do_ldst(
+                ctx,
+                is_load,
+                &rt,
+                &clean_addr,
+                MemOp::from_size(size) | MemOp::from_sign(is_signed),
+            );
+            ctx.push_op(Op::make_add(&clean_addr, &clean_addr, &size_val));
+            do_ldst(
+                ctx,
+                is_load,
+                &rt2,
+                &clean_addr,
+                MemOp::from_size(size) | MemOp::from_sign(is_signed),
+            );
         }
     }
 
-    Err("ldst_pair work in progress".to_owned())
+    if wback {
+        if postindex {
+            ctx.push_op((if offset >= 0 {
+                Op::make_add
+            } else {
+                Op::make_sub
+            })(&dirty_addr, &dirty_addr, &offset_val));
+        }
+        ctx.push_op(Op::make_mov(&ctx.reg_sp(rn), &dirty_addr));
+    }
+
+    Ok(())
 }
 
+#[allow(unused)]
 fn check_sp_alignment<R: HostStorage>(ctx: &mut Arm64GuestContext<R>) {
     /* sp alignment check as specified in AArch64 omitted */
 }

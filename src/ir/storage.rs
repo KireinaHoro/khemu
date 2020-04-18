@@ -66,10 +66,65 @@ impl<R: HostStorage> Display for KHVal<R> {
         // we hope that 5 digits are enough for display purposes
         write!(
             f,
-            "<#{1:05x}, {2}, {0}>",
+            "<#{1:05x}, {0}>",
             self.storage.borrow(),
             s.finish() % 0x100000,
-            self.ty
         )
+    }
+}
+
+// used in Load and Store ops to denote exact memory operation
+bitflags! {
+    pub struct MemOp: u64 {
+        const SIZE_8    = 0b00;
+        const SIZE_16   = 0b01;
+        const SIZE_32   = 0b10;
+        const SIZE_64   = 0b11;
+        const SIZE_MASK = 0b11;
+
+        const UNSIGNED    = 0;
+        const SIGN_EXTEND = 0b1 << 2;
+        const BYTE_SWAP   = 0b1 << 3;
+
+        // no align        0b000 << 4;
+        const ALIGN_2    = 0b001 << 4;
+        const ALIGN_4    = 0b010 << 4;
+        const ALIGN_8    = 0b011 << 4;
+        const ALIGN_16   = 0b100 << 4;
+        const ALIGN_32   = 0b101 << 4;
+        const ALIGN_64   = 0b110 << 4;
+        const ALIGN_MASK = 0b111 << 4;
+
+        // aliases for operand types
+        const UB = Self::SIZE_8.bits;
+        const UW = Self::SIZE_16.bits;
+        const UL = Self::SIZE_32.bits;
+        const SB = Self::SIZE_8.bits | Self::SIGN_EXTEND.bits;
+        const SW = Self::SIZE_16.bits | Self::SIGN_EXTEND.bits;
+        const SL = Self::SIZE_32.bits | Self::SIGN_EXTEND.bits;
+        const Q = Self::SIZE_64.bits;
+        // aliases assuming a little-endian host
+        const GUEST_LE  = 0;  // no need for byte swap
+        const GUEST_BE  = Self::BYTE_SWAP.bits;
+    }
+}
+
+impl MemOp {
+    pub fn from_size(bytes: u64) -> Self {
+        match bytes {
+            1 => Self::SIZE_8,
+            2 => Self::SIZE_16,
+            4 => Self::SIZE_32,
+            8 => Self::SIZE_64,
+            _ => unreachable!("size of {} bytes not supported", bytes),
+        }
+    }
+
+    pub fn from_sign(sign: bool) -> Self {
+        if sign {
+            Self::SIGN_EXTEND
+        } else {
+            Self::UNSIGNED
+        }
     }
 }

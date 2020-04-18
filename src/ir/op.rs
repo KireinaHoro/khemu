@@ -8,10 +8,11 @@ gen_ops! {
         binary: Add, Sub, Mul, Div, Rem, Remu; // arithmetic
         binary: And, Or, Xor, Andc, Eqv, Nand, Nor, Orc, Clz, Ctz; // logical
         binary: Shl, Shr, Sar, Rotl, Rotr; // shifts / rotates
-        custom: ExtractU, rd, rs, ofs, len;
-        custom: ExtractS, rd, rs, ofs, len;
+        binary: Load, Store;   // rd: reg, rs1: mem addr, rs2: `storage::MemOp`
+        custom: ExU, rd, rs, ofs, len;  // unsigned extract
+        custom: ExS, rd, rs, ofs, len;  // signed extract
         custom: Call, rd, func, rs1, rs2, rs3, rs4;
-        //override_maker: And, Add, Call;
+        //override_maker: Load, Store;
     },
     ValueType::F64 {
         unary: FMov;

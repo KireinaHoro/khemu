@@ -1,8 +1,10 @@
+use super::MemOp;
 use super::*;
 
 // read CPU register.
 // the SP encoding is used to represent XZR (hardwired zero) in some contexts.
 // If SP is needed, use `read_cpu_reg_sp`.
+#[allow(dead_code)]
 pub fn read_cpu_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     reg: usize,
@@ -40,7 +42,7 @@ pub fn top_byte_ignore<R: HostStorage>(
     } else {
         let ofs = ctx.alloc_u64(0);
         let len = ctx.alloc_u64(56);
-        ctx.push_op(Op::make_extracts(dst, src, &ofs, &len));
+        ctx.push_op(Op::make_exs(dst, src, &ofs, &len));
     }
 }
 
@@ -53,4 +55,19 @@ pub fn clean_data_tbi<R: HostStorage>(
     // we assume TBI always happens
     top_byte_ignore(ctx, &ret, addr, 1);
     ret
+}
+
+pub fn do_ldst<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    is_load: bool,
+    reg: &Rc<KHVal<R>>,
+    addr: &Rc<KHVal<R>>,
+    mem_op: MemOp,
+) {
+    let mem_op = ctx.alloc_u64((mem_op | MemOp::GUEST_LE).bits());
+    ctx.push_op((if is_load {
+        Op::make_load
+    } else {
+        Op::make_store
+    })(reg, addr, &mem_op));
 }

@@ -6,9 +6,15 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "bitflags"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "khemu"
 version = "0.1.0"
 dependencies = [
+ "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "macros 0.0.0",
  "num-traits 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "paste 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -89,6 +95,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum autocfg 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
+"checksum bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 "checksum num-traits 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)" = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
 "checksum paste 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ab4fb1930692d1b6a9cfabdde3d06ea0a7d186518e2f4d67660d8970e2fa647a"
 "checksum paste-impl 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "a62486e111e571b1e93b710b61e8f493c0013be39629b714cb166bdb06aa5a8a"
