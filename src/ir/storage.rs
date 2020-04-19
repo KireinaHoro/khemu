@@ -12,6 +12,9 @@ pub trait HostStorage: Default + Display {
     fn make_u32(v: u32) -> Self;
     fn make_u64(v: u64) -> Self;
     fn make_f64(v: f64) -> Self;
+    fn try_as_u32(&self) -> Option<u32>;
+    fn try_as_u64(&self) -> Option<u64>;
+    fn try_as_f64(&self) -> Option<f64>;
     // used to create named data, such as guest fixed registers
     fn make_named(name: String) -> Self;
 }

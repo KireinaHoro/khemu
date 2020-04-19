@@ -123,15 +123,14 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let custom_makers = custom
         .iter()
-        .filter(|(v, _)| {
-            let mnemonic = &v[0];
-
-            !override_maker.contains(mnemonic)
-        })
         .map(|(v, t)| {
             let mnemonic = &v[0];
             let lower = mnemonic.to_string().to_lowercase();
-            let fn_name = format_ident!("push_{}", lower);
+            let fn_name = if !override_maker.contains(mnemonic) {
+                format_ident!("push_{}", lower)
+            } else {
+                format_ident!("_push_{}", lower)
+            };
             let params = v.iter().skip(1);
             let aa = params.clone();
             let bb = params.clone();
@@ -178,10 +177,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let unary_makers = unary
         .iter()
-        .filter(|(u, _)| !override_maker.contains(u))
         .map(|(m, t)| {
             let lower = m.to_string().to_lowercase();
-            let fn_name = format_ident!("push_{}", lower);
+            let fn_name = if !override_maker.contains(m) {
+                format_ident!("push_{}", lower)
+            } else {
+                format_ident!("_push_{}", lower)
+            };
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name<C: crate::guest::GuestContext<R>>(
@@ -226,10 +228,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let convert_makers = convert
         .iter()
-        .filter(|(u, _)| !override_maker.contains(u))
         .map(|(m, t)| {
             let lower = m.to_string().to_lowercase();
-            let fn_name = format_ident!("push_{}", lower);
+            let fn_name = if !override_maker.contains(m) {
+                format_ident!("push_{}", lower)
+            } else {
+                format_ident!("_push_{}", lower)
+            };
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name<C: crate::guest::GuestContext<R>>(
@@ -274,10 +279,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let binary_makers = binary
         .iter()
-        .filter(|(b, _)| !override_maker.contains(b))
         .map(|(m, t)| {
             let lower = m.to_string().to_lowercase();
-            let fn_name = format_ident!("push_{}", lower);
+            let fn_name = if !override_maker.contains(m) {
+                format_ident!("push_{}", lower)
+            } else {
+                format_ident!("_push_{}", lower)
+            };
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name<C: crate::guest::GuestContext<R>>(

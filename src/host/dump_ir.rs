@@ -53,6 +53,30 @@ impl HostStorage for DumpIRHostStorage {
         DumpIRHostStorage::ImmF64(v)
     }
 
+    fn try_as_u32(&self) -> Option<u32> {
+        if let &DumpIRHostStorage::ImmU32(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    fn try_as_u64(&self) -> Option<u64> {
+        if let &DumpIRHostStorage::ImmU64(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    fn try_as_f64(&self) -> Option<f64> {
+        if let &DumpIRHostStorage::ImmF64(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
     fn make_named(name: String) -> Self {
         DumpIRHostStorage::Named(name)
     }
