@@ -15,6 +15,11 @@ pub struct Arm64GuestContext<'a, R: HostStorage> {
     disas_pos: usize,
     // 32 general-purpose registers
     xreg: Vec<Rc<KHVal<R>>>,
+    // Negative, Zero, Carry, Overflow
+    nf: Rc<KHVal<R>>,
+    zf: Rc<KHVal<R>>,
+    cf: Rc<KHVal<R>>,
+    vf: Rc<KHVal<R>>,
     ops: Vec<Op<R>>,
     // tracking Weak for allocated values
     tracking: Vec<Weak<KHVal<R>>>,
@@ -39,6 +44,11 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
                     ))
                 })
                 .collect(),
+            // use 32bit to simplify calculation when reading NZCV as a whole
+            nf: Rc::new(KHVal::named("nf".to_owned(), ValueType::U32)),
+            zf: Rc::new(KHVal::named("zf".to_owned(), ValueType::U32)),
+            cf: Rc::new(KHVal::named("cf".to_owned(), ValueType::U32)),
+            vf: Rc::new(KHVal::named("vf".to_owned(), ValueType::U32)),
             ops: Vec::new(),
             tracking: Vec::new(),
             u32_cache: HashMap::new(),

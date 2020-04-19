@@ -1,5 +1,5 @@
-use super::MemOp;
 use super::*;
+use super::{CondOp, MemOp};
 
 // read CPU register.
 // the SP encoding is used to represent XZR (hardwired zero) in some contexts.
@@ -65,23 +65,107 @@ pub fn do_ldst<R: HostStorage>(
     addr: &Rc<KHVal<R>>,
     mem_op: MemOp,
 ) {
-    let mem_op = ctx.alloc_u64((mem_op | MemOp::GUEST_LE).bits());
     (if is_load {
         Op::push_load
     } else {
         Op::push_store
-    })(ctx, reg, addr, &mem_op);
+    })(ctx, reg, addr, mem_op | MemOp::GUEST_LE);
 }
 
-pub fn set_nz<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, v: &Rc<KHVal<R>>) {}
-
-pub fn do_addsub_cc<R: HostStorage>(
+fn get_flags<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
-    is_add: bool,
+) -> (Rc<KHVal<R>>, Rc<KHVal<R>>, Rc<KHVal<R>>, Rc<KHVal<R>>) {
+    (
+        Rc::clone(&ctx.nf),
+        Rc::clone(&ctx.zf),
+        Rc::clone(&ctx.cf),
+        Rc::clone(&ctx.vf),
+    )
+}
+
+fn set_nz64<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, v: &Rc<KHVal<R>>) {
+    let (nf, zf, _, _) = get_flags(ctx);
+    assert_eq!(v.ty, ValueType::U64);
+    Op::push_extr(ctx, &zf, &nf, v);
+    Op::push_orw(ctx, &zf, &zf, &nf);
+}
+
+// generate add with condition code modification
+pub fn do_add_cc<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
     sf: bool,
     dest: &Rc<KHVal<R>>,
     t0: &Rc<KHVal<R>>,
     t1: &Rc<KHVal<R>>,
 ) {
-    if sf {}
+    let (nf, zf, cf, vf) = get_flags(ctx);
+    if sf {
+        let flag = ctx.alloc_val(ValueType::U64);
+        let tmp = ctx.alloc_val(ValueType::U64);
+
+        let zero = ctx.alloc_u64(0);
+        // capture carry in flag
+        Op::push_add2(ctx, dest, &flag, t0, &zero, t1, &zero);
+        Op::push_extrl(ctx, &cf, &flag);
+        set_nz64(ctx, dest);
+        // calculate vf
+        Op::push_xor(ctx, &flag, dest, t0);
+        Op::push_xor(ctx, &tmp, t0, t1);
+        Op::push_andc(ctx, &flag, &flag, &tmp);
+        Op::push_extrh(ctx, &vf, &flag);
+    } else {
+        let t0_32 = ctx.alloc_val(ValueType::U32);
+        let t1_32 = ctx.alloc_val(ValueType::U32);
+        let tmp = ctx.alloc_val(ValueType::U32);
+
+        let zero = ctx.alloc_u32(0);
+        Op::push_extrl(ctx, &t0_32, t0);
+        Op::push_extrl(ctx, &t1_32, t1);
+        Op::push_add2w(ctx, &nf, &cf, &t0_32, &zero, &t1_32, &zero);
+        Op::push_movw(ctx, &zf, &nf);
+        Op::push_xorw(ctx, &vf, &nf, &t0_32);
+        Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
+        Op::push_andcw(ctx, &vf, &vf, &tmp);
+        Op::push_extuwq(ctx, dest, &nf);
+    }
+}
+
+// generate sub with condition code modification
+pub fn do_sub_cc<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    sf: bool,
+    dest: &Rc<KHVal<R>>,
+    t0: &Rc<KHVal<R>>,
+    t1: &Rc<KHVal<R>>,
+) {
+    let (nf, zf, cf, vf) = get_flags(ctx);
+    if sf {
+        let flag = ctx.alloc_val(ValueType::U64);
+        let tmp = ctx.alloc_val(ValueType::U64);
+
+        Op::push_sub(ctx, dest, t0, t1);
+        set_nz64(ctx, dest);
+        // calculate cf
+        Op::push_setc(ctx, &flag, t0, t1, CondOp::GEU);
+        Op::push_extrl(ctx, &cf, &flag);
+        // calculate vf
+        Op::push_xor(ctx, &flag, &dest, t0);
+        Op::push_xor(ctx, &tmp, t0, t1);
+        Op::push_andc(ctx, &flag, &flag, &tmp);
+        Op::push_extrh(ctx, &vf, &flag);
+    } else {
+        let t0_32 = ctx.alloc_val(ValueType::U32);
+        let t1_32 = ctx.alloc_val(ValueType::U32);
+        let tmp = ctx.alloc_val(ValueType::U32);
+
+        Op::push_extrl(ctx, &t0_32, t0);
+        Op::push_extrl(ctx, &t1_32, t1);
+        Op::push_subw(ctx, &nf, &t0_32, &t1_32);
+        Op::push_movw(ctx, &zf, &nf);
+        Op::push_setc(ctx, &cf, &t0_32, &t1_32, CondOp::GEU);
+        Op::push_xorw(ctx, &vf, &nf, &t0_32);
+        Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
+        Op::push_andcw(ctx, &vf, &vf, &tmp);
+        Op::push_extuwq(ctx, dest, &nf);
+    }
 }

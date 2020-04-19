@@ -20,12 +20,14 @@ gen_ops! {
         custom: Movc, rd, rs1, rs2, c1, c2, cc;  // rd = if c1 `cc` c2 then rs1 else rs2
         custom: Add2, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
         custom: Call, rd, func, rs1, rs2, rs3, rs4;
-        override_maker: Load, Store, Setc, Movc;
+        override_maker: Load, Store;  // to accept MemOp
+        override_maker: Setc, Movc;  // to accept CondOp and to allow multiple types
     },
     ValueType::U32 {  // w - 32bit word
         unary: Movw;
         convert: Extrl, Extrh;    // convert 64bit to 32bit
-        binary: Orw, Xorw, Andcw;
+        binary: Subw;  // arithmetic
+        binary: Orw, Xorw, Andcw;  // logical
         custom: Add2w, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
     },
     ValueType::F64 {  // d - double float
@@ -63,6 +65,8 @@ impl<R: HostStorage> Op<R> {
         addr: &Rc<KHVal<R>>,
         mem_op: MemOp,
     ) {
+        assert_eq!(rd.ty, ValueType::U64);
+        assert_eq!(addr.ty, ValueType::U64);
         let mem_op = ctx.alloc_u64(mem_op.bits());
         ctx.push_op(Op::Load {
             rd: Rc::clone(rd),
@@ -77,6 +81,8 @@ impl<R: HostStorage> Op<R> {
         addr: &Rc<KHVal<R>>,
         mem_op: MemOp,
     ) {
+        assert_eq!(rd.ty, ValueType::U64);
+        assert_eq!(addr.ty, ValueType::U64);
         let mem_op = ctx.alloc_u64(mem_op.bits());
         ctx.push_op(Op::Store {
             rd: Rc::clone(rd),
@@ -93,11 +99,15 @@ impl<R: HostStorage> Op<R> {
         cc: CondOp,
     ) {
         let cc = ctx.alloc_u64(cc.bits());
-        ctx.push_op(Op::Setc {
-            rd: Rc::clone(rd),
-            c1: Rc::clone(c1),
-            c2: Rc::clone(c2),
-            cc,
+        assert_eq!(c1.ty, c2.ty);
+        ctx.push_op(match rd.ty {
+            ValueType::U64 | ValueType::U32 => Op::Setc {
+                rd: Rc::clone(rd),
+                c1: Rc::clone(c1),
+                c2: Rc::clone(c2),
+                cc,
+            },
+            _ => unreachable!("setc only accepts u32 and u64 destination"),
         });
     }
 
@@ -111,13 +121,19 @@ impl<R: HostStorage> Op<R> {
         cc: CondOp,
     ) {
         let cc = ctx.alloc_u64(cc.bits());
-        ctx.push_op(Op::Movc {
-            rd: Rc::clone(rd),
-            rs1: Rc::clone(rs1),
-            rs2: Rc::clone(rs2),
-            c1: Rc::clone(c1),
-            c2: Rc::clone(c2),
-            cc,
+        assert_eq!(c1.ty, c2.ty);
+        assert_eq!(rd.ty, rs1.ty);
+        assert_eq!(rd.ty, rs2.ty);
+        ctx.push_op(match rd.ty {
+            ValueType::U64 | ValueType::U32 => Op::Movc {
+                rd: Rc::clone(rd),
+                rs1: Rc::clone(rs1),
+                rs2: Rc::clone(rs2),
+                c1: Rc::clone(c1),
+                c2: Rc::clone(c2),
+                cc,
+            },
+            _ => unreachable!("movc only accepts u32 and u64 destination"),
         });
     }
 

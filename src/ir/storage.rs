@@ -85,7 +85,7 @@ impl<R: HostStorage> Display for KHVal<R> {
         // we hope that 5 digits are enough for display purposes
         write!(
             f,
-            "<#{1:05x}, {0}>",
+            "<{1:05x}, {0}>",
             self.storage.borrow(),
             s.finish() % 0x100000,
         )
