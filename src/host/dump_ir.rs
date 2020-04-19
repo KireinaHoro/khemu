@@ -15,6 +15,7 @@ impl DumpIRHostContext {
 
 // dummy interface, no real allocation
 pub enum DumpIRHostStorage {
+    ImmU32(u32),
     ImmU64(u64),
     ImmF64(f64),
     Named(String),
@@ -34,11 +35,16 @@ impl Display for DumpIRHostStorage {
             DumpIRHostStorage::Named(name) => write!(f, "{}", name),
             DumpIRHostStorage::ImmF64(v) => write!(f, "{}", v),
             DumpIRHostStorage::ImmU64(v) => write!(f, "{}", v),
+            DumpIRHostStorage::ImmU32(v) => write!(f, "{}", v),
         }
     }
 }
 
 impl HostStorage for DumpIRHostStorage {
+    fn make_u32(v: u32) -> Self {
+        DumpIRHostStorage::ImmU32(v)
+    }
+
     fn make_u64(v: u64) -> Self {
         DumpIRHostStorage::ImmU64(v)
     }

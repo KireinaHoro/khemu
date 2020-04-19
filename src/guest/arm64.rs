@@ -18,6 +18,7 @@ pub struct Arm64GuestContext<'a, R: HostStorage> {
     ops: Vec<Op<R>>,
     // tracking Weak for allocated values
     tracking: Vec<Weak<KHVal<R>>>,
+    u32_cache: HashMap<u32, Rc<KHVal<R>>>,
     u64_cache: HashMap<u64, Rc<KHVal<R>>>,
 }
 
@@ -40,6 +41,7 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
                 .collect(),
             ops: Vec::new(),
             tracking: Vec::new(),
+            u32_cache: HashMap::new(),
             u64_cache: HashMap::new(),
         }
     }
@@ -82,6 +84,19 @@ impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {
         let ret = Rc::new(KHVal::new(ty));
         self.tracking.push(Rc::downgrade(&ret));
         ret
+    }
+
+    // override the default implementation to cache smaller immediate values
+    fn alloc_u32(&mut self, v: u32) -> Rc<KHVal<R>> {
+        match self.u32_cache.get(&v) {
+            None => {
+                let ret = Rc::new(KHVal::u32(v));
+                self.tracking.push(Rc::downgrade(&ret));
+                self.u32_cache.insert(v, Rc::clone(&ret));
+                ret
+            }
+            Some(r) => Rc::clone(r),
+        }
     }
 
     // override the default implementation to cache smaller immediate values

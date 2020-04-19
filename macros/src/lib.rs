@@ -61,6 +61,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let GenOps { types } = parse_macro_input!(input as GenOps);
 
     let mut unary = HashMap::new();
+    let mut convert = HashMap::new();
     let mut binary = HashMap::new();
     let mut custom = HashMap::new();
     let mut override_maker = HashSet::new();
@@ -76,6 +77,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             match rule.rule_type.to_string().as_ref() {
                 "unary" => {
                     unary.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
+                }
+                "convert" => {
+                    convert.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
                 }
                 "binary" => {
                     binary.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
@@ -136,6 +140,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                     pub fn #fn_name<C: crate::guest::GuestContext<R>>(
                         ctx: &mut C,
                         #( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) {
+                        // we enforce all arguments to be of the declared type
                         #( assert_eq!(#aa.ty, #t); )*
                         ctx.push_op(Self::#mnemonic { #( #bb: ::std::rc::Rc::clone(#bb) ),* })
                     }
@@ -183,6 +188,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                         ctx: &mut C,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                        // we enforce all arguments to be of the declared type
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
                         ctx.push_op(Self::#m {
@@ -201,6 +207,53 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 Self::#m { rd, rs1 } => {
                     write!(f, "{}\t {} {}", #_lower, rd, rs1)?;
+                    Ok(())
+                },
+            }
+        })
+        .into_iter();
+
+    let converts = convert
+        .iter()
+        .map(|(m, _)| {
+            quote! {
+                #m {
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                },
+            }
+        })
+        .into_iter();
+    let convert_makers = convert
+        .iter()
+        .filter(|(u, _)| !override_maker.contains(u))
+        .map(|(m, t)| {
+            let lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("push_{}", lower);
+            quote! {
+                impl<R: crate::ir::storage::HostStorage> Op<R> {
+                    pub fn #fn_name<C: crate::guest::GuestContext<R>>(
+                        ctx: &mut C,
+                        rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                        rs: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                        // we enforce rd to be the type declared
+                        assert_eq!(rd.ty, #t);
+                        ctx.push_op(Self::#m {
+                            rd: ::std::rc::Rc::clone(rd),
+                            rs: ::std::rc::Rc::clone(rs),
+                        })
+                    }
+                }
+            }
+        })
+        .into_iter();
+    let convert_display = convert
+        .iter()
+        .map(|(m, _)| {
+            let _lower = m.to_string().to_lowercase();
+            quote! {
+                Self::#m { rd, rs } => {
+                    write!(f, "{}\t {} {}", #_lower, rd, rs)?;
                     Ok(())
                 },
             }
@@ -232,6 +285,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                        // we enforce all arguments to be of the declared type
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
                         assert_eq!(rs2.ty, #t);
@@ -262,6 +316,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         #[derive(Debug)]
         pub enum Op<R: crate::ir::storage::HostStorage> {
             #( #unaries )*
+            #( #converts )*
             #( #binaries )*
             #( #customs )*
         }
@@ -270,6 +325,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
                 match self {
                     #( #unary_display )*
+                    #( #convert_display )*
                     #( #binary_display )*
                     #( #custom_display )*
                 }
@@ -277,6 +333,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         }
 
         #( #unary_makers )*
+        #( #convert_makers )*
         #( #binary_makers )*
         #( #custom_makers )*
     };

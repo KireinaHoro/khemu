@@ -9,6 +9,7 @@ use std::hash::{Hash, Hasher};
 // all implementers must provide support for immediate numbers
 // a real host storage will probably support registers and memory as well
 pub trait HostStorage: Default + Display {
+    fn make_u32(v: u32) -> Self;
     fn make_u64(v: u64) -> Self;
     fn make_f64(v: f64) -> Self;
     // used to create named data, such as guest fixed registers
@@ -18,6 +19,7 @@ pub trait HostStorage: Default + Display {
 // valid value types
 #[derive(Debug, PartialEq)]
 pub enum ValueType {
+    U32,
     U64,
     F64,
 }
@@ -48,6 +50,14 @@ impl<R: HostStorage> KHVal<R> {
         Self {
             ty,
             storage: RefCell::new(R::make_named(name)),
+        }
+    }
+
+    // used to construct U32 value
+    pub fn u32(v: u32) -> Self {
+        Self {
+            ty: ValueType::U32,
+            storage: RefCell::new(R::make_u32(v)),
         }
     }
 
