@@ -127,15 +127,17 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .map(|(v, t)| {
             let mnemonic = &v[0];
             let lower = mnemonic.to_string().to_lowercase();
-            let fn_name = format_ident!("make_{}", lower);
+            let fn_name = format_ident!("push_{}", lower);
             let params = v.iter().skip(1);
             let aa = params.clone();
             let bb = params.clone();
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
-                    pub fn #fn_name(#( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) -> Self {
+                    pub fn #fn_name<C: crate::guest::GuestContext<R>>(
+                        ctx: &mut C,
+                        #( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) {
                         #( assert_eq!(#aa.ty, #t); )*
-                        Self::#mnemonic { #( #bb: ::std::rc::Rc::clone(#bb) ),* }
+                        ctx.push_op(Self::#mnemonic { #( #bb: ::std::rc::Rc::clone(#bb) ),* })
                     }
                 }
             }
@@ -174,18 +176,19 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .filter(|(u, _)| !override_maker.contains(u))
         .map(|(m, t)| {
             let lower = m.to_string().to_lowercase();
-            let fn_name = format_ident!("make_{}", lower);
+            let fn_name = format_ident!("push_{}", lower);
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
-                    pub fn #fn_name(
+                    pub fn #fn_name<C: crate::guest::GuestContext<R>>(
+                        ctx: &mut C,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                        rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
-                        Self::#m {
+                        ctx.push_op(Self::#m {
                             rd: ::std::rc::Rc::clone(rd),
                             rs1: ::std::rc::Rc::clone(rs1),
-                        }
+                        })
                     }
                 }
             }
@@ -221,21 +224,22 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .filter(|(b, _)| !override_maker.contains(b))
         .map(|(m, t)| {
             let lower = m.to_string().to_lowercase();
-            let fn_name = format_ident!("make_{}", lower);
+            let fn_name = format_ident!("push_{}", lower);
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
-                    pub fn #fn_name(
+                    pub fn #fn_name<C: crate::guest::GuestContext<R>>(
+                        ctx: &mut C,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                        rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) -> Self {
+                        rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
                         assert_eq!(rd.ty, #t);
                         assert_eq!(rs1.ty, #t);
                         assert_eq!(rs2.ty, #t);
-                        Self::#m {
+                        ctx.push_op(Self::#m {
                             rd: ::std::rc::Rc::clone(rd),
                             rs1: ::std::rc::Rc::clone(rs1),
                             rs2: ::std::rc::Rc::clone(rs2),
-                        }
+                        })
                     }
                 }
             }

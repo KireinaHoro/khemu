@@ -12,7 +12,7 @@ pub fn read_cpu_reg<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg(reg);
-    ctx.push_op((if sf { Op::make_mov } else { Op::make_extu })(&v, &src));
+    (if sf { Op::push_mov } else { Op::push_extu32 })(ctx, &v, &src);
     v
 }
 
@@ -24,7 +24,7 @@ pub fn read_cpu_reg_sp<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg_sp(reg);
-    ctx.push_op((if sf { Op::make_mov } else { Op::make_extu })(&v, &src));
+    (if sf { Op::push_mov } else { Op::push_extu32 })(ctx, &v, &src);
     v
 }
 
@@ -38,11 +38,11 @@ pub fn top_byte_ignore<R: HostStorage>(
     // does not have two ranges, thus the tag bytes will be forced to be zero.
     // We're performing system emulation, so we assume that we always run in EL0.
     if tbi == 0 {
-        ctx.push_op(Op::make_mov(dst, src));
+        Op::push_mov(ctx, dst, src);
     } else {
         let ofs = ctx.alloc_u64(0);
         let len = ctx.alloc_u64(56);
-        ctx.push_op(Op::make_exs(dst, src, &ofs, &len));
+        Op::push_extrs(ctx, dst, src, &ofs, &len);
     }
 }
 
@@ -65,9 +65,22 @@ pub fn do_ldst<R: HostStorage>(
     mem_op: MemOp,
 ) {
     let mem_op = ctx.alloc_u64((mem_op | MemOp::GUEST_LE).bits());
-    ctx.push_op((if is_load {
-        Op::make_load
+    (if is_load {
+        Op::push_load
     } else {
-        Op::make_store
-    })(reg, addr, &mem_op));
+        Op::push_store
+    })(ctx, reg, addr, &mem_op);
+}
+
+pub fn set_nz<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, v: &Rc<KHVal<R>>) {}
+
+pub fn do_addsub_cc<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    is_add: bool,
+    sf: bool,
+    dest: &Rc<KHVal<R>>,
+    t0: &Rc<KHVal<R>>,
+    t1: &Rc<KHVal<R>>,
+) {
+    if sf {}
 }

@@ -72,11 +72,11 @@ pub fn disas_ldst_pair<R: HostStorage>(
     let size = 1 << size as u64;
     let size_val = ctx.alloc_u64(size);
     if !postindex {
-        ctx.push_op((if offset >= 0 {
-            Op::make_add
+        (if offset >= 0 {
+            Op::push_add
         } else {
-            Op::make_sub
-        })(&dirty_addr, &dirty_addr, &offset_val));
+            Op::push_sub
+        })(ctx, &dirty_addr, &dirty_addr, &offset_val);
     }
     let clean_addr = clean_data_tbi(ctx, &dirty_addr);
 
@@ -97,7 +97,7 @@ pub fn disas_ldst_pair<R: HostStorage>(
                 &clean_addr,
                 MemOp::from_size(size) | MemOp::from_sign(is_signed),
             );
-            ctx.push_op(Op::make_add(&clean_addr, &clean_addr, &size_val));
+            Op::push_add(ctx, &clean_addr, &clean_addr, &size_val);
             do_ldst(
                 ctx,
                 is_load,
@@ -105,7 +105,7 @@ pub fn disas_ldst_pair<R: HostStorage>(
                 &clean_addr,
                 MemOp::from_size(size) | MemOp::from_sign(is_signed),
             );
-            ctx.push_op(Op::make_mov(&rt, &tmp));
+            Op::push_mov(ctx, &rt, &tmp);
         } else {
             do_ldst(
                 ctx,
@@ -114,7 +114,7 @@ pub fn disas_ldst_pair<R: HostStorage>(
                 &clean_addr,
                 MemOp::from_size(size) | MemOp::from_sign(is_signed),
             );
-            ctx.push_op(Op::make_add(&clean_addr, &clean_addr, &size_val));
+            Op::push_add(ctx, &clean_addr, &clean_addr, &size_val);
             do_ldst(
                 ctx,
                 is_load,
@@ -127,13 +127,13 @@ pub fn disas_ldst_pair<R: HostStorage>(
 
     if wback {
         if postindex {
-            ctx.push_op((if offset >= 0 {
-                Op::make_add
+            (if offset >= 0 {
+                Op::push_add
             } else {
-                Op::make_sub
-            })(&dirty_addr, &dirty_addr, &offset_val));
+                Op::push_sub
+            })(ctx, &dirty_addr, &dirty_addr, &offset_val);
         }
-        ctx.push_op(Op::make_mov(&ctx.reg_sp(rn), &dirty_addr));
+        Op::push_mov(ctx, &ctx.reg_sp(rn), &dirty_addr);
     }
 
     Ok(())
