@@ -12,7 +12,7 @@ pub fn read_cpu_reg<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg(reg);
-    (if sf { Op::push_mov } else { Op::push_extu32 })(ctx, &v, &src);
+    (if sf { Op::push_mov } else { Op::push_extuwq })(ctx, &v, &src);
     v
 }
 
@@ -24,7 +24,7 @@ pub fn read_cpu_reg_sp<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg_sp(reg);
-    (if sf { Op::push_mov } else { Op::push_extu32 })(ctx, &v, &src);
+    (if sf { Op::push_mov } else { Op::push_extuwq })(ctx, &v, &src);
     v
 }
 
@@ -57,6 +57,7 @@ pub fn clean_data_tbi<R: HostStorage>(
     ret
 }
 
+// generate load / store with proper memory operation
 pub fn do_ldst<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     is_load: bool,
