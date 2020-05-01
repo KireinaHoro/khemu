@@ -154,10 +154,11 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = mnemonic.to_string().to_lowercase();
             let params = v.iter().skip(1);
             let args = params.clone();
+            let placeholder = params.clone().map(|_| "{}").collect::<Vec<_>>().join(", ");
             quote! {
                 Self::#mnemonic { #( #params ),* } => {
                     write!(f, "{}\t", #_lower)?;
-                    #( write!(f, " {}", #args)?; )*
+                    write!(f, #placeholder, #( #args ),*)?;
                     Ok(())
                 },
             }
@@ -208,7 +209,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = m.to_string().to_lowercase();
             quote! {
                 Self::#m { rd, rs1 } => {
-                    write!(f, "{}\t {} {}", #_lower, rd, rs1)?;
+                    write!(f, "{}\t{}, {}", #_lower, rd, rs1)?;
                     Ok(())
                 },
             }
@@ -258,7 +259,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = m.to_string().to_lowercase();
             quote! {
                 Self::#m { rd, rs } => {
-                    write!(f, "{}\t {} {}", #_lower, rd, rs)?;
+                    write!(f, "{}\t{}, {}", #_lower, rd, rs)?;
                     Ok(())
                 },
             }
@@ -313,7 +314,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let _lower = m.to_string().to_lowercase();
             quote! {
                 Self::#m { rd, rs1, rs2 } => {
-                    write!(f, "{}\t {} {} {}", #_lower, rd, rs1, rs2)?;
+                    write!(f, "{}\t{}, {}, {}", #_lower, rd, rs1, rs2)?;
                     Ok(())
                 },
             }

@@ -86,12 +86,11 @@ impl<R: HostStorage> Display for KHVal<R> {
         let mut s = DefaultHasher::new();
         (self as *const Self as u64).hash(&mut s);
         // we hope that 5 digits are enough for display purposes
-        write!(
-            f,
-            "<{1:05x}, {0}>",
-            self.storage.borrow(),
-            s.finish() % 0x100000,
-        )
+        if let Err(_) = write!(f, "{}", self.storage.borrow()) {
+            write!(f, "%{:05x}", s.finish() % 0x100000)
+        } else {
+            Ok(())
+        }
     }
 }
 

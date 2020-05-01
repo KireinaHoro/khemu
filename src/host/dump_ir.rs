@@ -31,11 +31,13 @@ impl Default for DumpIRHostStorage {
 impl Display for DumpIRHostStorage {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            DumpIRHostStorage::Unassigned => write!(f, "_"),
-            DumpIRHostStorage::Named(name) => write!(f, "{}", name),
+            DumpIRHostStorage::Label(n) => write!(f, "L{}", n),
+            DumpIRHostStorage::Named(name) => write!(f, "${}", name),
             DumpIRHostStorage::ImmF64(v) => write!(f, "#{}", v),
             DumpIRHostStorage::ImmU64(v) => write!(f, "#{}", v),
             DumpIRHostStorage::ImmU32(v) => write!(f, "#{}", v),
+            // temporaries should use the value hash directly
+            DumpIRHostStorage::Unassigned => Err(Error),
         }
     }
 }
