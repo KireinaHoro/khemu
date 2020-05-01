@@ -7,6 +7,12 @@ use std::rc::Rc;
 // all types except for convert will be enforced to take arguments of the declared type
 // type mnemonic (q, w, d, ..) can be omitted if there is no ambiguity
 gen_ops! {
+    ValueType::Label {  // control flow related special
+        custom: Trap;  // trap to the runtime for TB lookup
+        custom: Setlbl, label;  // set label to current location in IR
+        custom: Brc, dest, c1, c2, cc; // branch to label dest if c1 `cc` c2
+        override_maker: Brc;  // to accept CondOp and to allow multiple types
+    },
     ValueType::U64 {  // q - 64bit word
         unary: Neg, Not, Mov, Bswap;
         convert: ExtUwq, ExtSwq;  // convert 32bit to 64bit
@@ -25,15 +31,16 @@ gen_ops! {
         override_maker: Add, Sub, ExtUwq;    // simple optimizations
     },
     ValueType::U32 {  // w - 32bit word
-        unary: Movw;
+        unary: Negw, Movw;
         convert: Extrl, Extrh;    // convert 64bit to 32bit
         binary: Subw;  // arithmetic
-        binary: Orw, Xorw, Andcw;  // logical
+        binary: Andw, Orw, Xorw, Andcw;  // logical
+        binary: Sarw; // shifts
         custom: Add2w, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
     },
     ValueType::F64 {  // d - double float
-        unary: MovD;
-        binary: AddD, SubD, MulD, DivD;
+        unary: Movd;
+        binary: Addd, Subd, Muld, Divd;
     }
 }
 
@@ -56,6 +63,12 @@ bitflags! {
         const GEU       = 0b0101;
         const LEU       = 0b1100;
         const GTU       = 0b1101;
+    }
+}
+
+impl CondOp {
+    pub fn invert(&mut self) {
+        self.bits = self.bits ^ 1;
     }
 }
 

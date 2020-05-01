@@ -15,6 +15,7 @@ impl DumpIRHostContext {
 
 // dummy interface, no real allocation
 pub enum DumpIRHostStorage {
+    Label(u64),
     ImmU32(u32),
     ImmU64(u64),
     ImmF64(f64),
@@ -43,6 +44,16 @@ impl Display for DumpIRHostStorage {
 }
 
 impl HostStorage for DumpIRHostStorage {
+    fn make_label() -> Self {
+        static mut COUNTER: u64 = 0;
+        let ret;
+        unsafe {
+            ret = DumpIRHostStorage::Label(COUNTER);
+            COUNTER += 1;
+        }
+        ret
+    }
+
     fn make_u32(v: u32) -> Self {
         DumpIRHostStorage::ImmU32(v)
     }

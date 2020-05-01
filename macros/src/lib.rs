@@ -89,11 +89,11 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                 }
                 "custom" => {
                     let def: Vec<_> = rule.defs.into_iter().collect();
-                    if def.len() < 2 {
+                    if def.len() < 1 {
                         ru.span()
                             .unwrap()
                             .error(
-                                "not enough operands for custom rule: <mnemonic> <op>[, <op>,...}",
+                                "not enough operands for custom rule: <mnemonic> [<op>, <op>,...]",
                             )
                             .emit();
                         return TokenStream::new();

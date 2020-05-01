@@ -18,6 +18,12 @@ where
 
     // allocate a new unassigned KHVal
     fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>>;
+    // allocate a new label
+    fn alloc_label(&mut self) -> Rc<KHVal<R>> {
+        let ret = self.alloc_val(ValueType::Label);
+        *ret.storage.borrow_mut() = R::make_label();
+        ret
+    }
     // allocate u32 immediate value
     fn alloc_u32(&mut self, v: u32) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::U32);

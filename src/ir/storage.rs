@@ -9,6 +9,7 @@ use std::hash::{Hash, Hasher};
 // all implementers must provide support for immediate numbers
 // a real host storage will probably support registers and memory as well
 pub trait HostStorage: Default + Display {
+    fn make_label() -> Self;
     fn make_u32(v: u32) -> Self;
     fn make_u64(v: u64) -> Self;
     fn make_f64(v: f64) -> Self;
@@ -22,6 +23,7 @@ pub trait HostStorage: Default + Display {
 // valid value types
 #[derive(Debug, PartialEq)]
 pub enum ValueType {
+    Label,  // jump target
     U32,
     U64,
     F64,
@@ -53,6 +55,13 @@ impl<R: HostStorage> KHVal<R> {
         Self {
             ty,
             storage: RefCell::new(R::make_named(name)),
+        }
+    }
+
+    pub fn label() -> Self {
+        Self {
+            ty: ValueType::Label,
+            storage: RefCell::new(R::make_label()),
         }
     }
 
