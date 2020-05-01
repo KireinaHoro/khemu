@@ -11,6 +11,10 @@ where
     type InsnType;
     // fetch a single guest instruction
     fn next_insn(&mut self) -> Option<Self::InsnType>;
+    // read PC of last fetched instruction
+    fn curr_pc(&self) -> usize;
+    // PC of upcoming instruction
+    fn next_pc(&self) -> usize;
 
     // allocate a new unassigned KHVal
     fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>>;

@@ -20,6 +20,9 @@ pub struct Arm64GuestContext<'a, R: HostStorage> {
     zf: Rc<KHVal<R>>,
     cf: Rc<KHVal<R>>,
     vf: Rc<KHVal<R>>,
+    // emulated PC
+    pc: Rc<KHVal<R>>,
+    // emitted IR operations
     ops: Vec<Op<R>>,
     // tracking Weak for allocated values
     tracking: Vec<Weak<KHVal<R>>>,
@@ -49,6 +52,8 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
             zf: Rc::new(KHVal::named("zf".to_owned(), ValueType::U32)),
             cf: Rc::new(KHVal::named("cf".to_owned(), ValueType::U32)),
             vf: Rc::new(KHVal::named("vf".to_owned(), ValueType::U32)),
+            // 64bit simulated PC
+            pc: Rc::new(KHVal::named("pc".to_owned(), ValueType::U64)),
             ops: Vec::new(),
             tracking: Vec::new(),
             u32_cache: HashMap::new(),
@@ -88,6 +93,14 @@ impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {
                     .fold(0, |c, (i, &v)| c | ((v as Self::InsnType) << (i * 8))),
             )
         }
+    }
+
+    fn curr_pc(&self) -> usize {
+        self.disas_pos - 4
+    }
+
+    fn next_pc(&self) -> usize {
+        self.disas_pos
     }
 
     fn alloc_val(&mut self, ty: ValueType) -> Rc<KHVal<R>> {
