@@ -3,7 +3,9 @@ extern crate paste;
 use crate::guest::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
+use crate::runtime::*;
 use crate::util::*;
+use std::collections::HashMap;
 use std::iter::*;
 use std::rc::{Rc, Weak};
 
@@ -11,7 +13,7 @@ pub type InsnType = u32;
 
 // disassembly facility
 pub struct Arm64GuestContext<'a, R: HostStorage> {
-    code: &'a [u8],
+    map: GuestMap<'a>,
     disas_pos: usize,
     // 32 general-purpose registers
     xreg: Vec<Rc<KHVal<R>>>,
@@ -31,10 +33,10 @@ pub struct Arm64GuestContext<'a, R: HostStorage> {
 }
 
 impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
-    pub fn new(code: &'a [u8]) -> Self {
+    pub fn new(map: GuestMap<'a>, entry_point: usize) -> Self {
         Self {
-            code,
-            disas_pos: 0,
+            map,
+            disas_pos: entry_point,
             xreg: (0..32)
                 .map(|i| {
                     Rc::new(KHVal::named(
@@ -76,22 +78,28 @@ impl<'a, R: HostStorage> Arm64GuestContext<'a, R> {
     }
 }
 
-impl<'a, R: HostStorage> GuestContext<R> for Arm64GuestContext<'a, R> {
+impl<'a, R: HostStorage> DisasContext<R> for Arm64GuestContext<'a, R> {
     type InsnType = InsnType;
 
     fn next_insn(&mut self) -> Option<Self::InsnType> {
         // we only support 4-byte RISC for now
         let addr = self.disas_pos;
-        if addr >= self.code.len() {
-            None
+        if let Some((k, v)) = self.map.get_region(addr) {
+            let offset = addr - k;
+            if offset >= v.len() {
+                None
+            } else {
+                let ret: &[u8] = &v[offset..offset + 4];
+                self.disas_pos = addr + 4;
+                Some(
+                    ret.iter()
+                        .enumerate()
+                        .fold(0, |c, (i, &v)| c | ((v as Self::InsnType) << (i * 8))),
+                )
+            }
         } else {
-            let ret: &[u8] = &self.code[addr..addr + 4];
-            self.disas_pos = addr + 4;
-            Some(
-                ret.iter()
-                    .enumerate()
-                    .fold(0, |c, (i, &v)| c | ((v as Self::InsnType) << (i * 8))),
-            )
+            // PC went outside of defined regions
+            None
         }
     }
 
@@ -265,7 +273,6 @@ disas_subcategory!(ldst, 24, 6,
 );
 
 use data_proc_simd_fp::disas_data_proc_simd_fp;
-use std::collections::HashMap;
 
 #[rustfmt::skip]
 disas_subcategory!(b_exc_sys, 25, 7,
