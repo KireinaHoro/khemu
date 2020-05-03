@@ -8,6 +8,9 @@ edition = "2018"
 
 [dependencies]
 macros = { path = "macros" }
-num-traits = "0.2.11"
+num-traits = "0.2"
 paste = "0.1"
-bitflags = "1.2.1"
+bitflags = "1.2"
+goblin = "0.2"
+log = "0.4"
+env_logger = "0.7"
