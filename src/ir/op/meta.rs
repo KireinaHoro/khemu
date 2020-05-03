@@ -1,7 +1,7 @@
 use super::*;
 
 impl<R: HostStorage> Op<R> {
-    pub fn push_load<C: GuestContext<R>>(
+    pub fn push_load<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         rd: &Rc<KHVal<R>>,
         addr: &Rc<KHVal<R>>,
@@ -13,7 +13,7 @@ impl<R: HostStorage> Op<R> {
         Op::_push_load(ctx, rd, addr, &mem_op);
     }
 
-    pub fn push_store<C: GuestContext<R>>(
+    pub fn push_store<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         rd: &Rc<KHVal<R>>,
         addr: &Rc<KHVal<R>>,
@@ -25,7 +25,7 @@ impl<R: HostStorage> Op<R> {
         Op::_push_store(ctx, rd, addr, &mem_op);
     }
 
-    pub fn push_setc<C: GuestContext<R>>(
+    pub fn push_setc<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         rd: &Rc<KHVal<R>>,
         c1: &Rc<KHVal<R>>,
@@ -46,7 +46,7 @@ impl<R: HostStorage> Op<R> {
         });
     }
 
-    pub fn push_movc<C: GuestContext<R>>(
+    pub fn push_movc<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         rd: &Rc<KHVal<R>>,
         rs1: &Rc<KHVal<R>>,
@@ -73,7 +73,7 @@ impl<R: HostStorage> Op<R> {
         });
     }
 
-    pub fn push_brc<C: GuestContext<R>>(
+    pub fn push_brc<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         dest: &Rc<KHVal<R>>,
         c1: &Rc<KHVal<R>>,
@@ -92,7 +92,7 @@ impl<R: HostStorage> Op<R> {
         });
     }
 
-    pub fn push_extr<C: GuestContext<R>>(
+    pub fn push_extr<C: DisasContext<R> + Disassembler<R>>(
         ctx: &mut C,
         lo: &Rc<KHVal<R>>,
         hi: &Rc<KHVal<R>>,

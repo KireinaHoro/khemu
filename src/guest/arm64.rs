@@ -156,17 +156,9 @@ impl<'a, R: HostStorage> DisasContext<R> for Arm64GuestContext<'a, R> {
     fn clean_tracking(&mut self) {
         self.tracking.retain(|x| x.weak_count() > 0);
     }
+}
 
-    fn push_op(&mut self, op: Op<R>) {
-        self.ops.push(op)
-    }
-
-    fn get_ops(&mut self) -> Vec<Op<R>> {
-        let mut ret = Vec::new();
-        std::mem::swap(&mut ret, &mut self.ops);
-        ret
-    }
-
+impl<'a, R: HostStorage> Disassembler<R> for Arm64GuestContext<'a, R> {
     fn disas_block(&mut self, block_size: u32) -> Result<(), String> {
         let mut i = 0;
         loop {
@@ -182,6 +174,16 @@ impl<'a, R: HostStorage> DisasContext<R> for Arm64GuestContext<'a, R> {
             }
             i += 1;
         }
+    }
+
+    fn push_op(&mut self, op: Op<R>) {
+        self.ops.push(op)
+    }
+
+    fn get_ops(&mut self) -> Vec<Op<R>> {
+        let mut ret = Vec::new();
+        std::mem::swap(&mut ret, &mut self.ops);
+        ret
     }
 }
 

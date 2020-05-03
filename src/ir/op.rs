@@ -1,4 +1,4 @@
-use crate::guest::GuestContext;
+use crate::guest::{DisasContext, Disassembler};
 use crate::ir::storage::{HostStorage, KHVal, MemOp, ValueType};
 use macros::gen_ops;
 use std::rc::Rc;

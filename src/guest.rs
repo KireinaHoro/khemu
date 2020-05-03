@@ -4,7 +4,17 @@ use crate::ir::op::Op;
 use crate::ir::storage::*;
 use std::rc::{Rc, Weak};
 
-pub trait GuestContext<R: HostStorage>
+pub trait Disassembler<R: HostStorage> {
+    // run disassembly loop for a block of guest code
+    fn disas_block(&mut self, block_size: u32) -> Result<(), String>;
+
+    // push an Op into the buffer
+    fn push_op(&mut self, op: Op<R>);
+    // get all Ops in buffer and reset buffer
+    fn get_ops(&mut self) -> Vec<Op<R>>;
+}
+
+pub trait DisasContext<R: HostStorage>
 where
     Self: Sized,
 {
@@ -47,12 +57,4 @@ where
     fn get_tracking(&self) -> &[Weak<KHVal<R>>];
     // run housekeeping on tracking
     fn clean_tracking(&mut self);
-
-    // push an Op into the buffer
-    fn push_op(&mut self, op: Op<R>);
-    // get all Ops in buffer and reset buffer
-    fn get_ops(&mut self) -> Vec<Op<R>>;
-
-    // run disassembly loop for a block of guest code
-    fn disas_block(&mut self, block_size: u32) -> Result<(), String>;
 }
