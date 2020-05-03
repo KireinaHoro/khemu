@@ -1,5 +1,5 @@
 use super::*;
-use crate::guest::arm64::facility::{do_test_jump_cc, do_end_tb_to_addr};
+use crate::guest::arm64::facility::{do_end_tb_to_addr, do_test_jump_cc};
 
 pub fn disas_exc_sys<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,

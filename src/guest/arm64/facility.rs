@@ -181,46 +181,54 @@ fn test_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32) -> Arm64CC<R
     let (nf, zf, cf, vf) = get_flags(ctx);
 
     match cc {
-        0 | 1 => { // eq: Z; ne: !Z
+        0 | 1 => {
+            // eq: Z; ne: !Z
             cond = CondOp::EQ;
             value = Rc::clone(&zf);
-        },
-        2 | 3 => { // cs: C; cc: !C
+        }
+        2 | 3 => {
+            // cs: C; cc: !C
             cond = CondOp::NE;
             value = Rc::clone(&cf);
-        },
-        4 | 5 => { // mi: N; pl: !N
+        }
+        4 | 5 => {
+            // mi: N; pl: !N
             cond = CondOp::LT;
             value = Rc::clone(&nf);
-        },
-        6 | 7 => { // vs: V; vc: !V
+        }
+        6 | 7 => {
+            // vs: V; vc: !V
             cond = CondOp::LT;
             value = Rc::clone(&vf);
-        },
-        8 | 9 => { // hi: C && !Z; ls: !(C && !Z)
+        }
+        8 | 9 => {
+            // hi: C && !Z; ls: !(C && !Z)
             cond = CondOp::NE;
             value = ctx.alloc_val(ValueType::U32);
             Op::push_negw(ctx, &value, &cf);
             Op::push_andw(ctx, &value, &value, &zf);
-        },
-        10 | 11 => { // ge: N ^ V == 0; lt: N ^ V != 0
+        }
+        10 | 11 => {
+            // ge: N ^ V == 0; lt: N ^ V != 0
             cond = CondOp::GE;
             value = ctx.alloc_val(ValueType::U32);
             Op::push_xorw(ctx, &value, &vf, &nf);
-        },
-        12 | 13 => { // gt: !Z && N == V; Z || N != V
+        }
+        12 | 13 => {
+            // gt: !Z && N == V; Z || N != V
             cond = CondOp::NE;
             value = ctx.alloc_val(ValueType::U32);
             let shift = ctx.alloc_u32(31);
             Op::push_xorw(ctx, &value, &vf, &nf);
             Op::push_sarw(ctx, &value, &value, &shift);
             Op::push_andcw(ctx, &value, &zf, &value);
-        },
-        14 | 15 => { // always
+        }
+        14 | 15 => {
+            // always
             cond = CondOp::ALWAYS;
             value = Rc::clone(&zf);
-        },
-        _ => unreachable!("bad condition code {:#x}", cc)
+        }
+        _ => unreachable!("bad condition code {:#x}", cc),
     }
 
     if cc & 1 == 1 && cc != 14 && cc != 15 {
@@ -230,7 +238,11 @@ fn test_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32) -> Arm64CC<R
     Arm64CC { cond, value }
 }
 
-pub fn do_test_jump_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32, label: &Rc<KHVal<R>>) {
+pub fn do_test_jump_cc<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    cc: u32,
+    label: &Rc<KHVal<R>>,
+) {
     assert_eq!(label.ty, ValueType::Label);
     let Arm64CC { cond, value } = test_cc(ctx, cc);
     let zero = ctx.alloc_u32(0);

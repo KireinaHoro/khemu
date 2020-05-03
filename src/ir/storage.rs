@@ -23,7 +23,7 @@ pub trait HostStorage: Default + Display {
 // valid value types
 #[derive(Debug, PartialEq)]
 pub enum ValueType {
-    Label,  // jump target
+    Label, // jump target
     U32,
     U64,
     F64,
