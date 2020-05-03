@@ -35,8 +35,8 @@ impl Display for DumpIRHostStorage {
             DumpIRHostStorage::Label(n) => write!(f, "L{}", n),
             DumpIRHostStorage::Named(name) => write!(f, "${}", name),
             DumpIRHostStorage::ImmF64(v) => write!(f, "#{}", v),
-            DumpIRHostStorage::ImmU64(v) => write!(f, "#{}", v),
-            DumpIRHostStorage::ImmU32(v) => write!(f, "#{}", v),
+            DumpIRHostStorage::ImmU64(v) => write!(f, "#{:#x}", v),
+            DumpIRHostStorage::ImmU32(v) => write!(f, "#{:#x}", v),
             // temporaries should use the value hash directly
             DumpIRHostStorage::Unassigned => Err(Error),
         }
