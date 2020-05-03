@@ -101,4 +101,41 @@ impl<R: HostStorage> Op<R> {
         Op::push_extrl(ctx, lo, arg);
         Op::push_extrh(ctx, hi, arg);
     }
+
+    pub fn push_extru<C: DisasContext<R> + Disassembler<R>>(
+        ctx: &mut C,
+        rd: &Rc<KHVal<R>>,
+        rs: &Rc<KHVal<R>>,
+        ofs: u64,
+        len: u64,
+    ) {
+        let ofs = ctx.alloc_u64(ofs);
+        let len = ctx.alloc_u64(len);
+        Op::_push_extru(ctx, rd, rs, &ofs, &len);
+    }
+
+    pub fn push_extrs<C: DisasContext<R> + Disassembler<R>>(
+        ctx: &mut C,
+        rd: &Rc<KHVal<R>>,
+        rs: &Rc<KHVal<R>>,
+        ofs: u64,
+        len: u64,
+    ) {
+        let ofs = ctx.alloc_u64(ofs);
+        let len = ctx.alloc_u64(len);
+        Op::_push_extrs(ctx, rd, rs, &ofs, &len);
+    }
+
+    pub fn push_depos<C: DisasContext<R> + Disassembler<R>>(
+        ctx: &mut C,
+        rd: &Rc<KHVal<R>>,
+        rs1: &Rc<KHVal<R>>,
+        rs2: &Rc<KHVal<R>>,
+        ofs: u64,
+        len: u64,
+    ) {
+        let ofs = ctx.alloc_u64(ofs);
+        let len = ctx.alloc_u64(len);
+        Op::_push_depos(ctx, rd, rs1, rs2, &ofs, &len);
+    }
 }

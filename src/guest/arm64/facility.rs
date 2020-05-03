@@ -40,9 +40,7 @@ pub fn top_byte_ignore<R: HostStorage>(
     if tbi == 0 {
         Op::push_mov(ctx, dst, src);
     } else {
-        let ofs = ctx.alloc_u64(0);
-        let len = ctx.alloc_u64(56);
-        Op::push_extrs(ctx, dst, src, &ofs, &len);
+        Op::push_extrs(ctx, dst, src, 0, 56);
     }
 }
 

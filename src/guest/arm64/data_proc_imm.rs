@@ -48,4 +48,47 @@ pub fn disas_add_sub_imm<R: HostStorage>(
     Ok(())
 }
 
-disas_stub![pc_rel_addr, logic_imm, movw_imm, bitfield, extract];
+pub fn disas_movw_imm<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), String> {
+    let rd = extract(insn, 0, 5) as usize;
+    let sf = extract(insn, 31, 1) == 1;
+    let opc = extract(insn, 29, 2);
+    let pos = extract(insn, 21, 2) << 4;
+    let mut imm = extract(insn, 5, 16) as u64;
+
+    let rd = ctx.reg(rd);
+
+    if !sf && pos >= 32 {
+        return unallocated(ctx, insn);
+    }
+
+    match opc {
+        0 | 2 => {
+            // movn / movz
+            imm <<= pos as u64;
+            if opc == 0 {
+                imm = !imm;
+            }
+            if !sf {
+                imm &= 0xffffffffu64;
+            }
+            let imm = ctx.alloc_u64(imm);
+            Op::push_mov(ctx, &rd, &imm);
+        }
+        3 => {
+            // movk
+            let imm = ctx.alloc_u64(imm);
+            Op::push_depos(ctx, &rd, &rd, &imm, pos as u64, 16);
+            if !sf {
+                Op::push_extuwq(ctx, &rd, &rd);
+            }
+        }
+        _ => return unallocated(ctx, insn),
+    }
+
+    Ok(())
+}
+
+disas_stub![pc_rel_addr, logic_imm, bitfield, extract];

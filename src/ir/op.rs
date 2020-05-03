@@ -22,6 +22,7 @@ gen_ops! {
         binary: Load, Store;   // rd: reg, rs1: mem addr, rs2: `storage::MemOp`
         custom: ExtrU, rd, rs, ofs, len;  // unsigned extract
         custom: ExtrS, rd, rs, ofs, len;  // signed extract
+        custom: Depos, rd, rs1, rs2, ofs, len;  // deposit ofs,len of rs2 into rs1
         custom: Setc, rd, c1, c2, cc;  // set rd if c1 `cc` c2
         custom: Movc, rd, rs1, rs2, c1, c2, cc;  // rd = if c1 `cc` c2 then rs1 else rs2
         custom: Add2, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
@@ -29,6 +30,7 @@ gen_ops! {
         override_maker: Load, Store; // to accept MemOp
         override_maker: Setc, Movc;  // to accept CondOp and to allow multiple types
         override_maker: Add, Sub, ExtUwq;    // simple optimizations
+        override_maker: ExtrU, ExtrS, Depos; // to accept immediate value for ofs len
     },
     ValueType::U32 {  // w - 32bit word
         unary: Negw, Movw;

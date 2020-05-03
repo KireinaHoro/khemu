@@ -1,6 +1,5 @@
 use crate::guest::arm64::Arm64GuestContext;
 use crate::guest::Disassembler;
-use crate::host::HostContext;
 use crate::ir::storage::HostStorage;
 use crate::runtime::GuestMap;
 use log::info;
