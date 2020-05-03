@@ -1,2 +1,5 @@
 target/
 .idea/
+# used for testing
+hello
+hello_dyn
