@@ -1,8 +1,8 @@
 use super::*;
 
 impl<R: HostStorage> Op<R> {
-    pub fn push_add<C: DisasContext<R> + Disassembler<R>>(
-        ctx: &mut C,
+    pub fn push_add(
+        ctx: &mut (impl DisasContext<R> + Disassembler<R>),
         rd: &Rc<KHVal<R>>,
         rs1: &Rc<KHVal<R>>,
         rs2: &Rc<KHVal<R>>,
@@ -21,8 +21,8 @@ impl<R: HostStorage> Op<R> {
         Op::_push_add(ctx, rd, rs1, rs2);
     }
 
-    pub fn push_sub<C: DisasContext<R> + Disassembler<R>>(
-        ctx: &mut C,
+    pub fn push_sub(
+        ctx: &mut (impl DisasContext<R> + Disassembler<R>),
         rd: &Rc<KHVal<R>>,
         rs1: &Rc<KHVal<R>>,
         rs2: &Rc<KHVal<R>>,
@@ -37,8 +37,8 @@ impl<R: HostStorage> Op<R> {
         Op::_push_sub(ctx, rd, rs1, rs2);
     }
 
-    pub fn push_extuwq<C: DisasContext<R> + Disassembler<R>>(
-        ctx: &mut C,
+    pub fn push_extuwq(
+        ctx: &mut (impl DisasContext<R> + Disassembler<R>),
         rd: &Rc<KHVal<R>>,
         rs1: &Rc<KHVal<R>>,
     ) {

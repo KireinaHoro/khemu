@@ -69,13 +69,13 @@ fn load_aarch64<'a, R: HostStorage>(
 
 pub fn load_program<'a, R: 'a + HostStorage>(
     buffer: &'a [u8],
-) -> Result<Box<dyn Disassembler<R> + 'a>, String> {
+) -> Result<impl Disassembler<R> + 'a, String> {
     let binary = match elf::Elf::parse(buffer) {
         Ok(b) => b,
         Err(e) => return Err(format!("failed to parse ELF: {}", e)),
     };
 
-    Ok(Box::new(dispatch_machine! { buffer, &binary =>
+    Ok(dispatch_machine! { buffer, &binary =>
         EM_AARCH64: load_aarch64::<R>;
-    }?))
+    }?)
 }
