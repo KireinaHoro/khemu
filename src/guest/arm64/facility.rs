@@ -342,4 +342,12 @@ pub fn do_logic_cc<R: HostStorage>(
     Op::push_mov(ctx, &cf, &zero);
     Op::push_mov(ctx, &vf, &zero);
 }
+
+// check that FP/neon is enabled
+// if not enabled, the caller should not emit any code for the instruction
+pub fn fp_access_check<R: HostStorage>(ctx: &mut Arm64GuestContext<R>) -> bool {
+    // FP not enabled yet, always disabled
+    Op::push_trap(ctx, TrapOp::UNDEF_OPCODE, &Rc::clone(&ctx.pc));
+
+    false
 }

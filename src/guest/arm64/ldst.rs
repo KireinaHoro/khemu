@@ -144,10 +144,145 @@ fn check_sp_alignment<R: HostStorage>(ctx: &mut Arm64GuestContext<R>) {
     /* sp alignment check as specified in AArch64 omitted */
 }
 
+pub fn disas_ldst_reg_imm9<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+    opc: u32,
+    size: u32,
+    rt: u32,
+    is_vector: bool,
+) -> Result<(), String> {
+    Err("ldst_reg_imm9 work in progress".to_owned())
+}
+
+pub fn disas_ldst_atomic<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+    size: u32,
+    rt: u32,
+    is_vector: bool,
+) -> Result<(), String> {
+    Err("ldst_atomic work in progress".to_owned())
+}
+
+pub fn disas_ldst_reg_offset<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+    opc: u32,
+    size: u32,
+    rt: u32,
+    is_vector: bool,
+) -> Result<(), String> {
+    Err("ldst_reg_offset work in progress".to_owned())
+}
+
+pub fn disas_ldst_pac<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+    size: u32,
+    rt: u32,
+    is_vector: bool,
+) -> Result<(), String> {
+    Err("ldst_pac work in progress".to_owned())
+}
+
+pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+    opc: u32,
+    size: u32,
+    rt: u32,
+    is_vector: bool,
+) -> Result<(), String> {
+    let rn = extract(insn, 5, 5);
+    let imm12 = extract(insn, 10, 12);
+
+    let is_store;
+    let is_signed;
+    let is_extended;
+
+    let mut size = size;
+
+    if is_vector {
+        is_signed = false;
+        size |= (opc & 2) << 1;
+        if size > 4 {
+            return unallocated(ctx, insn);
+        }
+        is_store = extract(opc, 0, 1) == 0;
+        if !fp_access_check(ctx) {
+            return Ok(());
+        }
+    } else {
+        if size == 3 && opc == 2 {
+            // prfm - prefetch, ignore
+            return Ok(());
+        }
+        if opc == 3 && size > 1 {
+            return unallocated(ctx, insn);
+        }
+        is_store = opc == 0;
+        is_signed = extract(opc, 1, 1) == 1;
+        is_extended = size < 3 && extract(opc, 0, 1) == 1;
+    }
+
+    if rn == 31 {
+        check_sp_alignment(ctx);
+    }
+    let dirty_addr = read_cpu_reg_sp(ctx, rn as usize, true);
+    let offset = ctx.alloc_u64((imm12 << size) as u64);
+    Op::push_add(ctx, &dirty_addr, &dirty_addr, &offset);
+    let clean_addr = clean_data_tbi(ctx, &dirty_addr);
+
+    let size = 1 << size as u64;
+
+    if is_vector {
+        // TODO(jsteward) implement vector/SIMD
+        return unallocated(ctx, insn);
+    } else {
+        let rt = ctx.reg(rt as usize);
+        // FIXME we skipped the ISS (Instruction-Specific Syndrome) calculation
+        do_ldst(
+            ctx,
+            !is_store,
+            &rt,
+            &clean_addr,
+            MemOp::from_size(size) | MemOp::from_sign(is_signed),
+        );
+    }
+
+    Ok(())
+}
+
+pub fn disas_ldst_reg<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), String> {
+    let rt = extract(insn, 0, 5);
+    let opc = extract(insn, 22, 2);
+    let is_vector = extract(insn, 26, 1) == 1;
+    let size = extract(insn, 30, 2);
+
+    match extract(insn, 24, 2) {
+        0 => {
+            if extract(insn, 21, 1) == 0 {
+                disas_ldst_reg_imm9(ctx, insn, opc, size, rt, is_vector)
+            } else {
+                match extract(insn, 10, 2) {
+                    0 => disas_ldst_atomic(ctx, insn, size, rt, is_vector),
+                    2 => disas_ldst_reg_offset(ctx, insn, opc, size, rt, is_vector),
+                    _ => disas_ldst_pac(ctx, insn, size, rt, is_vector),
+                }
+            }
+        }
+        1 => disas_ldst_reg_unsigned_imm(ctx, insn, opc, size, rt, is_vector),
+        _ => unallocated(ctx, insn),
+    }
+}
+
 disas_stub![
     ldst_excl,
     ld_lit,
-    ldst_reg,
     ldst_multiple_struct,
     ldst_single_struct,
     ldst_ldapr_stlr
