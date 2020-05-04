@@ -188,13 +188,14 @@ impl<'a, R: HostStorage> Disassembler<R> for Arm64GuestContext<'a, R> {
 }
 
 // AArch64 Opcodes
-#[allow(dead_code, unused)]
 fn unallocated<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
 ) -> Result<(), String> {
-    // TODO(jsteward) we should handle this as SIGILL
-    Err(format!("unallocated opcode; instruction: 0x{:08x}", insn))
+    // Emit trap to runtime with UNDEF cause and emulated PC value
+    Op::push_trap(ctx, TrapOp::UNDEF_OPCODE, &Rc::clone(&ctx.pc));
+
+    Ok(())
 }
 
 macro_rules! disas_category {

@@ -252,7 +252,7 @@ pub fn do_test_jump_cc<R: HostStorage>(
 pub fn do_end_tb_to_addr<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, dest: &Rc<KHVal<R>>) {
     let pc = Rc::clone(&ctx.pc);
     Op::push_mov(ctx, &pc, dest);
-    Op::push_trap(ctx);
+    Op::push_trap(ctx, TrapOp::LOOKUP_TB, dest);
 }
 
 bitflags! {

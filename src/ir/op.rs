@@ -8,7 +8,6 @@ use std::rc::Rc;
 // type mnemonic (q, w, d, ..) can be omitted if there is no ambiguity
 gen_ops! {
     ValueType::Label {  // control flow related special
-        custom: Trap;  // trap to the runtime for TB lookup
         custom: Setlbl, label;  // set label to current location in IR
         custom: Brc, dest, c1, c2, cc; // branch to label dest if c1 `cc` c2
         override_maker: Brc;  // to accept CondOp and to allow multiple types
@@ -20,6 +19,8 @@ gen_ops! {
         binary: And, Or, Xor, Andc, Eqv, Nand, Nor, Orc, Clz, Ctz; // logical
         binary: Shl, Shr, Sar, Rotl, Rotr; // shifts / rotates
         binary: Load, Store;   // rd: reg, rs1: mem addr, rs2: `storage::MemOp`
+        // trap to runtime for TB lookup / fault injection
+        custom: Trap, cause, val;
         custom: ExtrU, rd, rs, ofs, len;  // unsigned extract
         custom: ExtrS, rd, rs, ofs, len;  // signed extract
         custom: Depos, rd, rs1, rs2, ofs, len;  // deposit ofs,len of rs2 into rs1
@@ -31,6 +32,7 @@ gen_ops! {
         override_maker: Load, Store; // to accept MemOp
         override_maker: Setc, Movc;  // to accept CondOp and to allow multiple types
         override_maker: Add, Sub, ExtUwq;    // simple optimizations
+        override_maker: Trap;  // argument form, inject TB end
         override_maker: ExtrU, ExtrS, Depos; // to accept immediate value for ofs len
     },
     ValueType::U32 {  // w - 32bit word
@@ -75,6 +77,14 @@ bitflags! {
 impl CondOp {
     pub fn invert(&mut self) {
         self.bits = self.bits ^ 1;
+    }
+}
+
+bitflags! {
+    pub struct TrapOp: u64 {
+        const LOOKUP_TB = 0;
+        const UNDEF_OPCODE = 1;
+        const ACCESS_FAULT = 2;
     }
 }
 

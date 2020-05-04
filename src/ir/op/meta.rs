@@ -152,4 +152,17 @@ impl<R: HostStorage> Op<R> {
             _ => unreachable!(),
         }
     }
+
+    pub fn push_trap(
+        ctx: &mut (impl DisasContext<R> + Disassembler<R>),
+        cause: TrapOp,
+        val: &Rc<KHVal<R>>,
+    ) {
+        let cause = ctx.alloc_u64(cause.bits);
+        let new_val = ctx.alloc_val(val.ty);
+        Op::push_mov(ctx, &new_val, val);
+        Op::_push_trap(ctx, &cause, &new_val);
+
+        // TODO(jsteward) end current TB and start new one
+    }
 }

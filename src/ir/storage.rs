@@ -21,7 +21,7 @@ pub trait HostStorage: Default + Display {
 }
 
 // valid value types
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ValueType {
     Label, // jump target
     U32,
