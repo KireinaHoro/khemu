@@ -27,6 +27,7 @@ gen_ops! {
         custom: Movc, rd, rs1, rs2, c1, c2, cc;  // rd = if c1 `cc` c2 then rs1 else rs2
         custom: Add2, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
         custom: Call, rd, func, rs1, rs2, rs3, rs4;
+        override_maker: Mov;
         override_maker: Load, Store; // to accept MemOp
         override_maker: Setc, Movc;  // to accept CondOp and to allow multiple types
         override_maker: Add, Sub, ExtUwq;    // simple optimizations
@@ -40,10 +41,12 @@ gen_ops! {
         binary: Rotrw; // shifts / rotates
         binary: Sarw; // shifts
         custom: Add2w, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
+        override_maker: Movw;
     },
     ValueType::F64 {  // d - double float
         unary: Movd;
         binary: Addd, Subd, Muld, Divd;
+        override_maker: Movd;
     }
 }
 

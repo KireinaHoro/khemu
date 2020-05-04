@@ -120,7 +120,7 @@ pub fn do_add_cc<R: HostStorage>(
         Op::push_extrl(ctx, &t0_32, t0);
         Op::push_extrl(ctx, &t1_32, t1);
         Op::push_add2w(ctx, &nf, &cf, &t0_32, &zero, &t1_32, &zero);
-        Op::push_movw(ctx, &zf, &nf);
+        Op::push_mov(ctx, &zf, &nf);
         Op::push_xorw(ctx, &vf, &nf, &t0_32);
         Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
         Op::push_andcw(ctx, &vf, &vf, &tmp);
@@ -159,7 +159,7 @@ pub fn do_sub_cc<R: HostStorage>(
         Op::push_extrl(ctx, &t0_32, t0);
         Op::push_extrl(ctx, &t1_32, t1);
         Op::push_subw(ctx, &nf, &t0_32, &t1_32);
-        Op::push_movw(ctx, &zf, &nf);
+        Op::push_mov(ctx, &zf, &nf);
         Op::push_setc(ctx, &cf, &t0_32, &t1_32, CondOp::GEU);
         Op::push_xorw(ctx, &vf, &nf, &t0_32);
         Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
@@ -336,9 +336,10 @@ pub fn do_logic_cc<R: HostStorage>(
         set_nz64(ctx, result);
     } else {
         Op::push_extrl(ctx, &zf, result);
-        Op::push_movw(ctx, &nf, &zf);
+        Op::push_mov(ctx, &nf, &zf);
     }
     let zero = ctx.alloc_u32(0);
-    Op::push_movw(ctx, &cf, &zero);
-    Op::push_movw(ctx, &vf, &zero);
+    Op::push_mov(ctx, &cf, &zero);
+    Op::push_mov(ctx, &vf, &zero);
+}
 }

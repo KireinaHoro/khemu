@@ -138,4 +138,18 @@ impl<R: HostStorage> Op<R> {
         let len = ctx.alloc_u64(len);
         Op::_push_depos(ctx, rd, rs1, rs2, &ofs, &len);
     }
+
+    pub fn push_mov(
+        ctx: &mut (impl DisasContext<R> + Disassembler<R>),
+        rd: &Rc<KHVal<R>>,
+        rs: &Rc<KHVal<R>>,
+    ) {
+        assert_eq!(rd.ty, rs.ty);
+        match rd.ty {
+            ValueType::U64 => Op::_push_mov(ctx, rd, rs),
+            ValueType::U32 => Op::_push_movw(ctx, rd, rs),
+            ValueType::F64 => Op::_push_movd(ctx, rd, rs),
+            _ => unreachable!(),
+        }
+    }
 }
