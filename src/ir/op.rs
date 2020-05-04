@@ -37,6 +37,7 @@ gen_ops! {
         convert: Extrl, Extrh;    // convert 64bit to 32bit
         binary: Subw;  // arithmetic
         binary: Andw, Orw, Xorw, Andcw;  // logical
+        binary: Rotrw; // shifts / rotates
         binary: Sarw; // shifts
         custom: Add2w, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
     },

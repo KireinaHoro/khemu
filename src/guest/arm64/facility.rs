@@ -254,3 +254,91 @@ pub fn do_end_tb_to_addr<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, dest: &
     Op::push_mov(ctx, &pc, dest);
     Op::push_trap(ctx);
 }
+
+bitflags! {
+    pub struct A64Shift: u32 {
+        const LSL = 0;
+        const LSR = 1;
+        const ASR = 2;
+        const ROR = 3;
+    }
+}
+
+// shift KHVal by KHVal according to ARM shifting types
+// caller needs to ensure shift is not out of range and provide semantics for out of
+// range shifts per ARM mandated
+pub fn do_shift<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    dest: &Rc<KHVal<R>>,
+    src: &Rc<KHVal<R>>,
+    sf: bool,
+    shift_type: A64Shift,
+    shift_amount: &Rc<KHVal<R>>,
+) {
+    match shift_type {
+        A64Shift::LSL => Op::push_shl(ctx, dest, src, shift_amount),
+        A64Shift::LSR => Op::push_shr(ctx, dest, src, shift_amount),
+        A64Shift::ASR => {
+            if !sf {
+                Op::push_extswq(ctx, dest, src);
+            }
+            Op::push_sar(ctx, dest, if sf { src } else { dest }, shift_amount)
+        }
+        A64Shift::ROR => {
+            if sf {
+                Op::push_rotr(ctx, dest, src, shift_amount);
+            } else {
+                let t0 = ctx.alloc_val(ValueType::U32);
+                let t1 = ctx.alloc_val(ValueType::U32);
+                Op::push_extrl(ctx, &t0, src);
+                Op::push_extrl(ctx, &t1, shift_amount);
+                Op::push_rotrw(ctx, &t0, &t0, &t1);
+                Op::push_extuwq(ctx, dest, &t0);
+            }
+        }
+        _ => unreachable!(),
+    }
+
+    if !sf {
+        Op::push_extuwq(ctx, dest, dest);
+    }
+}
+
+pub fn do_shift_imm<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    dest: &Rc<KHVal<R>>,
+    src: &Rc<KHVal<R>>,
+    sf: bool,
+    shift_type: A64Shift,
+    shift_i: u32,
+) {
+    if sf {
+        assert!(shift_i < 64);
+    } else {
+        assert!(shift_i < 32);
+    }
+
+    if shift_i == 0 {
+        Op::push_mov(ctx, dest, src);
+    } else {
+        let shift_i = ctx.alloc_u64(shift_i as u64);
+        do_shift(ctx, dest, src, sf, shift_type, &shift_i);
+    }
+}
+
+pub fn do_logic_cc<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    sf: bool,
+    result: &Rc<KHVal<R>>,
+) {
+    let (nf, zf, cf, vf) = get_flags(ctx);
+    if sf {
+        set_nz64(ctx, result);
+    } else {
+        Op::push_extrl(ctx, &zf, result);
+        Op::push_movw(ctx, &nf, &zf);
+    }
+    let zero = ctx.alloc_u32(0);
+    Op::push_movw(ctx, &cf, &zero);
+    Op::push_movw(ctx, &vf, &zero);
+}
