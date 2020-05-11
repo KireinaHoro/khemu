@@ -4,7 +4,7 @@ use crate::guest::arm64::facility::*;
 pub fn disas_data_proc_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let op0 = extract(insn, 30, 1);
     let op1 = extract(insn, 28, 1);
     let op2 = extract(insn, 21, 4);
@@ -45,7 +45,7 @@ pub fn disas_data_proc_reg<R: HostStorage>(
 pub fn disas_logic_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let sf = extract(insn, 31, 1) == 1;
     let opc = extract(insn, 29, 2);
     let shift_type = extract(insn, 22, 2);
@@ -83,7 +83,11 @@ pub fn disas_logic_reg<R: HostStorage>(
 
     let shift_type = match A64Shift::from_bits(shift_type) {
         Some(s) => s,
-        None => return Err("unknown shift_type in logic_reg".to_owned()),
+        None => {
+            return Err(DisasException::Unexpected(
+                "unknown shift_type in logic_reg".to_owned(),
+            ))
+        }
     };
     if shift_amount != 0 {
         do_shift_imm(ctx, &rm, &rm, sf, shift_type, shift_amount);
@@ -116,7 +120,11 @@ pub fn disas_logic_reg<R: HostStorage>(
             // eon
             Op::push_eqv(ctx, &rd, &rn, &rm);
         }
-        _ => return Err("unknown opc in logic_reg".to_owned()),
+        _ => {
+            return Err(DisasException::Unexpected(
+                "unknown opc in logic_reg".to_owned(),
+            ))
+        }
     }
 
     if !sf {

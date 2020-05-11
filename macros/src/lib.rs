@@ -137,7 +137,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        ctx: &mut (impl crate::guest::DisasContext<R> + crate::guest::Disassembler<R>),
+                        ctx: &mut impl crate::guest::DisasContext<R>,
                         #( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) {
                         // we enforce all arguments to be of the declared type
                         #( assert_eq!(#aa.ty, #t); )*
@@ -188,7 +188,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        ctx: &mut (impl crate::guest::DisasContext<R> + crate::guest::Disassembler<R>),
+                        ctx: &mut impl crate::guest::DisasContext<R>,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
                         // we enforce all arguments to be of the declared type
@@ -239,7 +239,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        ctx: &mut (impl crate::guest::DisasContext<R> + crate::guest::Disassembler<R>),
+                        ctx: &mut impl crate::guest::DisasContext<R>,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
                         // we enforce rd to be the type declared
@@ -290,7 +290,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             quote! {
                 impl<R: crate::ir::storage::HostStorage> Op<R> {
                     pub fn #fn_name(
-                        ctx: &mut (impl crate::guest::DisasContext<R> + crate::guest::Disassembler<R>),
+                        ctx: &mut impl crate::guest::DisasContext<R>,
                         rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                         rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {

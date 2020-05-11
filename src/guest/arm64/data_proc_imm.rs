@@ -4,7 +4,7 @@ use crate::guest::arm64::facility::*;
 pub fn disas_add_sub_imm<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let rd = extract(insn, 0, 5) as usize;
     let rn = extract(insn, 5, 5) as usize;
     let shift = extract(insn, 22, 2);
@@ -51,7 +51,7 @@ pub fn disas_add_sub_imm<R: HostStorage>(
 pub fn disas_movw_imm<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let rd = extract(insn, 0, 5) as usize;
     let sf = extract(insn, 31, 1) == 1;
     let opc = extract(insn, 29, 2);

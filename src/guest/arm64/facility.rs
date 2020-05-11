@@ -248,7 +248,6 @@ pub fn do_test_jump_cc<R: HostStorage>(
 }
 
 // set PC and return to runtime to find out next TB
-// TODO(jsteward) we should implement TB chaining here
 pub fn do_end_tb_to_addr<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, dest: &Rc<KHVal<R>>) {
     let pc = Rc::clone(&ctx.pc);
     Op::push_mov(ctx, &pc, dest);

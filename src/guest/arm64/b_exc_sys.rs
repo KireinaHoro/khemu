@@ -4,7 +4,7 @@ use crate::guest::arm64::facility::{do_end_tb_to_addr, do_test_jump_cc};
 pub fn disas_exc_sys<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     (if extract(insn, 24, 1) == 1 {
         if extract(insn, 22, 2) == 0 {
             disas_system
@@ -19,31 +19,35 @@ pub fn disas_exc_sys<R: HostStorage>(
 pub fn disas_cond_b_imm<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     if extract(insn, 4, 1) == 1 || extract(insn, 24, 1) == 1 {
         return unallocated(ctx, insn);
     }
 
     let addr = (ctx.curr_pc() as i64 + sextract(insn as i64, 5, 19) * 4) as usize;
     let cond = extract(insn, 0, 4);
-    let addr = ctx.alloc_u64(addr as u64);
+    let addr_val = ctx.alloc_u64(addr as u64);
 
     if cond < 0xe {
         // genuine conditional branches
         let label = ctx.alloc_label();
         do_test_jump_cc(ctx, cond, &label);
-        // TODO(jsteward) we do not implement TB chaining for now
-        // TODO(jsteward) simply set PC and end current TB for the runtime to figure out where to go
         let next_pc = ctx.alloc_u64(ctx.next_pc() as u64);
-        do_end_tb_to_addr(ctx, &next_pc);
+        do_end_tb_to_addr(ctx, &next_pc); // branch not taken
+        ctx.set_aux_chain();
         Op::push_setlbl(ctx, &label);
-        do_end_tb_to_addr(ctx, &addr);
+        do_end_tb_to_addr(ctx, &addr_val); // branch taken
+        ctx.set_direct_chain();
+
+        Err(DisasException::Branch(Some(addr), Some(ctx.next_pc())))
     } else {
         // 0xe and 0xf are "always" conditions
-        do_end_tb_to_addr(ctx, &addr);
-    }
+        do_end_tb_to_addr(ctx, &addr_val);
+        ctx.set_direct_chain();
 
-    Ok(())
+        // not returning
+        Err(DisasException::Branch(Some(addr), None))
+    }
 }
 
 disas_stub![

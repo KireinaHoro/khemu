@@ -2,25 +2,61 @@ pub mod arm64;
 
 use crate::ir::op::Op;
 use crate::ir::storage::*;
+use crate::runtime::GuestMap;
+use bitflags::_core::fmt::{Error, Formatter};
+use std::fmt::Display;
 use std::rc::{Rc, Weak};
+
+// exceptions during disassembly that terminated
+// the current translation block to start a new one
+pub enum DisasException {
+    // types that can be directly chained to the next block
+    LimitReached(usize),                  // usize: next pc
+    Branch(Option<usize>, Option<usize>), // taken / not taken
+    Unexpected(String),                   // other unexpected error
+}
+
+impl Display for DisasException {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            DisasException::LimitReached(d) => {
+                write!(f, "translation block size exceeded, next instr: {}", d)
+            }
+            DisasException::Branch(d, a) => write!(
+                f,
+                "branch encountered, direct next: {:?}; aux next: {:?}",
+                d, a
+            ),
+            DisasException::Unexpected(s) => write!(f, "unexpected exception: {}", s),
+        }
+    }
+}
+
+pub struct TranslationBlock<R: HostStorage> {
+    pub start_pc: usize,
+    pub ops: Vec<Op<R>>,
+    pub direct_chain_idx: Option<usize>, // taken branch
+    pub aux_chain_idx: Option<usize>,    // not taken branch
+}
 
 pub trait Disassembler<R: HostStorage> {
     // run disassembly loop for a block of guest code
-    fn disas_block(&mut self, block_size: u32) -> Result<(), String>;
+    fn disas_block(&mut self, start_pos: usize, tb_size: usize) -> DisasException;
 
-    // push an Op into the buffer
-    fn push_op(&mut self, op: Op<R>);
-    // get all Ops in buffer and reset buffer
-    fn get_ops(&mut self) -> Vec<Op<R>>;
+    // get the newly-generated TB
+    fn get_tb(&mut self) -> TranslationBlock<R>;
+
+    // get memory map for execution use
+    fn get_guest_map(&self) -> GuestMap;
 }
 
-pub trait DisasContext<R: HostStorage>
+pub trait DisasContext<R: HostStorage>: Disassembler<R>
 where
     Self: Sized,
 {
     type InsnType;
     // fetch a single guest instruction
-    fn next_insn(&mut self) -> Option<Self::InsnType>;
+    fn next_insn(&mut self) -> Self::InsnType;
     // read PC of last fetched instruction
     fn curr_pc(&self) -> usize;
     // PC of upcoming instruction
@@ -57,4 +93,8 @@ where
     fn get_tracking(&self) -> &[Weak<KHVal<R>>];
     // run housekeeping on tracking
     fn clean_tracking(&mut self);
+
+    // push an Op into the current translation block
+    // should queue the Op pending for next translation block whenever there is an exception
+    fn push_op(&mut self, op: Op<R>);
 }

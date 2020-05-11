@@ -6,7 +6,7 @@ use std::convert::TryInto;
 pub fn disas_ldst_pair<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let rt = extract(insn, 0, 5) as usize;
     let rn = extract(insn, 5, 5) as usize;
     let rt2 = extract(insn, 10, 5) as usize;
@@ -59,7 +59,7 @@ pub fn disas_ldst_pair<R: HostStorage>(
             postindex = false;
             wback = true;
         }
-        _ => return Err("unmatched index".to_owned()),
+        _ => return Err(DisasException::Unexpected("unmatched index".to_owned())),
     }
 
     if rn == 31 {
@@ -151,8 +151,10 @@ pub fn disas_ldst_reg_imm9<R: HostStorage>(
     size: u32,
     rt: u32,
     is_vector: bool,
-) -> Result<(), String> {
-    Err("ldst_reg_imm9 work in progress".to_owned())
+) -> Result<(), DisasException> {
+    Err(DisasException::Unexpected(
+        "ldst_reg_imm9 work in progress".to_owned(),
+    ))
 }
 
 pub fn disas_ldst_atomic<R: HostStorage>(
@@ -161,8 +163,10 @@ pub fn disas_ldst_atomic<R: HostStorage>(
     size: u32,
     rt: u32,
     is_vector: bool,
-) -> Result<(), String> {
-    Err("ldst_atomic work in progress".to_owned())
+) -> Result<(), DisasException> {
+    Err(DisasException::Unexpected(
+        "ldst_atomic work in progress".to_owned(),
+    ))
 }
 
 pub fn disas_ldst_reg_offset<R: HostStorage>(
@@ -172,8 +176,10 @@ pub fn disas_ldst_reg_offset<R: HostStorage>(
     size: u32,
     rt: u32,
     is_vector: bool,
-) -> Result<(), String> {
-    Err("ldst_reg_offset work in progress".to_owned())
+) -> Result<(), DisasException> {
+    Err(DisasException::Unexpected(
+        "ldst_reg_offset work in progress".to_owned(),
+    ))
 }
 
 pub fn disas_ldst_pac<R: HostStorage>(
@@ -182,8 +188,10 @@ pub fn disas_ldst_pac<R: HostStorage>(
     size: u32,
     rt: u32,
     is_vector: bool,
-) -> Result<(), String> {
-    Err("ldst_pac work in progress".to_owned())
+) -> Result<(), DisasException> {
+    Err(DisasException::Unexpected(
+        "ldst_pac work in progress".to_owned(),
+    ))
 }
 
 pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
@@ -193,7 +201,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
     size: u32,
     rt: u32,
     is_vector: bool,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let rn = extract(insn, 5, 5);
     let imm12 = extract(insn, 10, 12);
 
@@ -257,7 +265,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
 pub fn disas_ldst_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
-) -> Result<(), String> {
+) -> Result<(), DisasException> {
     let rt = extract(insn, 0, 5);
     let opc = extract(insn, 22, 2);
     let is_vector = extract(insn, 26, 1) == 1;
