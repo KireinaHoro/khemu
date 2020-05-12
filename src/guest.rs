@@ -19,15 +19,21 @@ pub enum DisasException {
 impl Display for DisasException {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            DisasException::LimitReached(d) => {
-                write!(f, "translation block size exceeded, next instr: {}", d)
+            DisasException::LimitReached(d) => write!(f, "TB size exceeded, next instr: {}", d),
+            DisasException::Branch(d, a) => {
+                let df = if let Some(a) = d {
+                    format!("{:#x}", a)
+                } else {
+                    "unknown".to_owned()
+                };
+                let af = if let Some(a) = a {
+                    format!("{:#x}", a)
+                } else {
+                    "unknown".to_owned()
+                };
+                write!(f, "branch: direct {}; aux {}", df, af)
             }
-            DisasException::Branch(d, a) => write!(
-                f,
-                "branch encountered, direct next: {:?}; aux next: {:?}",
-                d, a
-            ),
-            DisasException::Unexpected(s) => write!(f, "unexpected exception: {}", s),
+            DisasException::Unexpected(s) => write!(f, "unexpected: {}", s),
         }
     }
 }
