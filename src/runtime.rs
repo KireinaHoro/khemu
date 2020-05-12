@@ -74,7 +74,7 @@ pub fn do_work() -> Result<(), String> {
         match result {
             DisasException::Unexpected(s) => {
                 ret = Some(s);
-                host.emit_block(tb);
+                host.emit_block(tb, disassembler.get_tracking(), None);
                 break;
             }
             e => {
@@ -98,7 +98,7 @@ pub fn do_work() -> Result<(), String> {
                 }
 
                 // emit backend instructions
-                host.emit_block(tb);
+                host.emit_block(tb, disassembler.get_tracking(), Some(e));
 
                 // TODO(jsteward) run generated instructions
                 // TODO(jsteward) handle trap to add new targets to `start_positions`

@@ -1,10 +1,11 @@
 // This is a dummy host that simply dumps the IR without executing them
 
-use crate::guest::TranslationBlock;
+use crate::guest::{DisasException, TranslationBlock};
 use crate::host::*;
-use crate::ir::storage::HostStorage;
+use crate::ir::storage::*;
 use crate::runtime::GuestMap;
 use std::fmt::{Display, Error, Formatter};
+use std::rc::Weak;
 
 pub struct DumpIRHostContext {}
 
@@ -99,7 +100,12 @@ impl HostStorage for DumpIRHostStorage {
 impl HostContext for DumpIRHostContext {
     type StorageType = DumpIRHostStorage;
 
-    fn emit_block(&mut self, tb: TranslationBlock<DumpIRHostStorage>) {
+    fn emit_block(
+        &mut self,
+        tb: TranslationBlock<Self::StorageType>,
+        _tracking: &[Weak<KHVal<Self::StorageType>>],
+        _exception: Option<DisasException>,
+    ) {
         // TODO(jsteward) insert TB into cache
         println!("Start address: {:#x}", tb.start_pc);
         for op in tb.ops.into_iter() {

@@ -54,6 +54,11 @@ pub trait Disassembler<R: HostStorage> {
 
     // get memory map for execution use
     fn get_guest_map(&self) -> GuestMap;
+
+    // get tracking weak pointers of allocated KHVals
+    fn get_tracking(&self) -> &[Weak<KHVal<R>>];
+    // run housekeeping on tracking
+    fn clean_tracking(&mut self);
 }
 
 pub trait DisasContext<R: HostStorage>: Disassembler<R>
@@ -94,11 +99,6 @@ where
         *ret.storage.borrow_mut() = R::make_f64(v);
         ret
     }
-
-    // get tracking weak pointers of allocated KHVals
-    fn get_tracking(&self) -> &[Weak<KHVal<R>>];
-    // run housekeeping on tracking
-    fn clean_tracking(&mut self);
 
     // push an Op into the current translation block
     // should queue the Op pending for next translation block whenever there is an exception

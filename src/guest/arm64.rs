@@ -173,13 +173,6 @@ impl<R: HostStorage> DisasContext<R> for Arm64GuestContext<R> {
         self.tracking.push(Rc::downgrade(&ret));
         ret
     }
-    fn get_tracking(&self) -> &[Weak<KHVal<R>>] {
-        self.tracking.as_slice()
-    }
-
-    fn clean_tracking(&mut self) {
-        self.tracking.retain(|x| x.weak_count() > 0);
-    }
 
     fn push_op(&mut self, op: Op<R>) {
         self.ops.push(op)
@@ -221,6 +214,14 @@ impl<R: HostStorage> Disassembler<R> for Arm64GuestContext<R> {
 
     fn get_guest_map(&self) -> GuestMap {
         Rc::clone(&self.map)
+    }
+
+    fn get_tracking(&self) -> &[Weak<KHVal<R>>] {
+        self.tracking.as_slice()
+    }
+
+    fn clean_tracking(&mut self) {
+        self.tracking.retain(|x| x.weak_count() > 0);
     }
 }
 
