@@ -1,5 +1,5 @@
 use super::*;
-use crate::guest::arm64::facility::{do_end_tb_to_addr, do_test_jump_cc};
+use crate::guest::arm64::facility::*;
 
 pub fn disas_exc_sys<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
@@ -33,28 +33,36 @@ pub fn disas_cond_b_imm<R: HostStorage>(
         let label = ctx.alloc_label();
         do_test_jump_cc(ctx, cond, &label);
         let next_pc = ctx.alloc_u64(ctx.next_pc() as u64);
-        do_end_tb_to_addr(ctx, &next_pc); // branch not taken
-        ctx.set_aux_chain();
+        do_end_tb_to_addr(ctx, &next_pc, true); // branch not taken
         Op::push_setlbl(ctx, &label);
-        do_end_tb_to_addr(ctx, &addr_val); // branch taken
-        ctx.set_direct_chain();
+        do_end_tb_to_addr(ctx, &addr_val, false); // branch taken
 
         Err(DisasException::Branch(Some(addr), Some(ctx.next_pc())))
     } else {
         // 0xe and 0xf are "always" conditions
-        do_end_tb_to_addr(ctx, &addr_val);
-        ctx.set_direct_chain();
+        do_end_tb_to_addr(ctx, &addr_val, false);
 
         // not returning
         Err(DisasException::Branch(Some(addr), None))
     }
 }
 
-disas_stub![
-    uncond_b_imm,
-    comp_b_imm,
-    test_b_imm,
-    system,
-    exc,
-    uncond_b_reg
-];
+pub fn disas_uncond_b_imm<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), DisasException> {
+    let addr = (ctx.curr_pc() as i64 + sextract(insn as i64, 0, 26) * 4) as usize;
+    let addr_val = ctx.alloc_u64(addr as u64);
+
+    if insn & (1 << 31) != 0 {
+        // BL: branch with link
+        let next_pc = ctx.alloc_u64(ctx.next_pc() as u64);
+        let reg = ctx.reg(30);
+        Op::push_mov(ctx, &reg, &next_pc);
+    }
+
+    do_end_tb_to_addr(ctx, &addr_val, false);
+    Err(DisasException::Branch(Some(addr), None))
+}
+
+disas_stub![comp_b_imm, test_b_imm, system, exc, uncond_b_reg];

@@ -260,10 +260,19 @@ pub fn do_test_jump_cc<R: HostStorage>(
 }
 
 // set PC and return to runtime to find out next TB
-pub fn do_end_tb_to_addr<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, dest: &Rc<KHVal<R>>) {
+pub fn do_end_tb_to_addr<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    dest: &Rc<KHVal<R>>,
+    is_aux: bool,
+) {
     let pc = Rc::clone(&ctx.pc);
     Op::push_mov(ctx, &pc, dest);
     Op::push_trap(ctx, TrapOp::LOOKUP_TB, dest);
+    if is_aux {
+        ctx.set_aux_chain();
+    } else {
+        ctx.set_direct_chain();
+    }
 }
 
 bitflags! {
