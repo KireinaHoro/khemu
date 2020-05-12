@@ -9,12 +9,6 @@ use std::rc::Weak;
 
 pub struct DumpIRHostContext {}
 
-impl DumpIRHostContext {
-    pub fn new(_: GuestMap) -> Self {
-        Self {}
-    }
-}
-
 // dummy interface, no real allocation
 pub enum DumpIRHostStorage {
     Label(u64),
@@ -97,23 +91,30 @@ impl HostStorage for DumpIRHostStorage {
     }
 }
 
+impl HostBlock for String {
+    fn execute(&self, ctx: &mut impl HostContext) {
+        print!("{}", self);
+    }
+}
+
 impl HostContext for DumpIRHostContext {
     type StorageType = DumpIRHostStorage;
+    type BlockType = String;
 
     fn emit_block(
         &mut self,
         tb: TranslationBlock<Self::StorageType>,
         _tracking: &[Weak<KHVal<Self::StorageType>>],
         _exception: Option<DisasException>,
-    ) {
-        // TODO(jsteward) insert TB into cache
-        println!("Start address: {:#x}", tb.start_pc);
+    ) -> Self::BlockType {
+        let mut ret = String::new();
         for op in tb.ops.into_iter() {
-            println!("{}", op)
+            ret += &format!("{}\n", op);
         }
+        ret
     }
 
-    fn get_insns(&mut self) -> Vec<u8> {
-        unimplemented!("DumpIR will not generate instructions")
+    fn new(_: GuestMap, handler: impl FnMut(u64, u64)) -> Self {
+        Self {}
     }
 }

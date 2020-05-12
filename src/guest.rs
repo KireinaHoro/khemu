@@ -10,16 +10,21 @@ use std::rc::{Rc, Weak};
 // exceptions during disassembly that terminated
 // the current translation block to start a new one
 pub enum DisasException {
-    // types that can be directly chained to the next block
-    LimitReached(usize),                  // usize: next pc
-    Branch(Option<usize>, Option<usize>), // taken / not taken
-    Unexpected(String),                   // other unexpected error
+    // direct continue to next instruction
+    // possible cases: jump target (forcing start of a new block), size limit exceeded
+    Continue(usize), // usize: next pc
+    // branch (conditional / unconditional)
+    // possible cases: direct branch (and link), conditional branch
+    // parameters denote statically-resolvable target
+    Branch(Option<usize>, Option<usize>), // Option<usize>: target pc
+    // unexpected error
+    Unexpected(String), // String: cause
 }
 
 impl Display for DisasException {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            DisasException::LimitReached(d) => write!(f, "TB size exceeded, next instr: {}", d),
+            DisasException::Continue(d) => write!(f, "TB size exceeded, next instr: {:#x}", d),
             DisasException::Branch(d, a) => {
                 let df = if let Some(a) = d {
                     format!("{:#x}", a)
@@ -41,6 +46,7 @@ impl Display for DisasException {
 pub struct TranslationBlock<R: HostStorage> {
     pub start_pc: usize,
     pub ops: Vec<Op<R>>,
+    // index of LOOKUP_TB trap in ops
     pub direct_chain_idx: Option<usize>, // taken branch
     pub aux_chain_idx: Option<usize>,    // not taken branch
 }
@@ -65,9 +71,6 @@ pub trait DisasContext<R: HostStorage>: Disassembler<R>
 where
     Self: Sized,
 {
-    type InsnType;
-    // fetch a single guest instruction
-    fn next_insn(&mut self) -> Self::InsnType;
     // read PC of last fetched instruction
     fn curr_pc(&self) -> usize;
     // PC of upcoming instruction

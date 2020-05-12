@@ -28,6 +28,8 @@ pub struct Arm64GuestContext<R: HostStorage> {
     start_pc: Option<usize>,
     // emitted IR operations in current TB
     ops: Vec<Op<R>>,
+    // jump targets discovered statically
+    targets: Vec<usize>,
     // chaining points
     direct_chain_idx: Option<usize>,
     aux_chain_idx: Option<usize>,
@@ -63,11 +65,28 @@ impl<R: HostStorage> Arm64GuestContext<R> {
             pc: Rc::new(KHVal::named("pc".to_owned(), ValueType::U64)),
             start_pc: None,
             ops: Vec::new(),
+            targets: Vec::new(),
             direct_chain_idx: None,
             aux_chain_idx: None,
             tracking: Vec::new(),
             u32_cache: HashMap::new(),
             u64_cache: HashMap::new(),
+        }
+    }
+
+    fn next_insn(&mut self) -> InsnType {
+        let addr = self.disas_pos.unwrap();
+        let (k, v) = self.map.get_region(addr);
+        let offset = addr - k;
+        if offset >= v.len() {
+            panic!("address {:#x} out of range", addr);
+        } else {
+            let ret: &[u8] = &v[offset..offset + 4];
+            // normal aarch64 (not Thumb) has 4-byte instructions
+            self.disas_pos = Some(addr + 4);
+            ret.iter()
+                .enumerate()
+                .fold(0, |c, (i, &v)| c | ((v as InsnType) << (i * 8)))
         }
     }
 
@@ -109,24 +128,6 @@ impl<R: HostStorage> Arm64GuestContext<R> {
 }
 
 impl<R: HostStorage> DisasContext<R> for Arm64GuestContext<R> {
-    type InsnType = InsnType;
-
-    fn next_insn(&mut self) -> Self::InsnType {
-        // normal aarch64 (not Thumb) has 4-byte instructions
-        let addr = self.disas_pos.unwrap();
-        let (k, v) = self.map.get_region(addr);
-        let offset = addr - k;
-        if offset >= v.len() {
-            panic!("address {:#x} out of range", addr);
-        } else {
-            let ret: &[u8] = &v[offset..offset + 4];
-            self.disas_pos = Some(addr + 4);
-            ret.iter()
-                .enumerate()
-                .fold(0, |c, (i, &v)| c | ((v as Self::InsnType) << (i * 8)))
-        }
-    }
-
     fn curr_pc(&self) -> usize {
         self.disas_pos.unwrap() - 4
     }
@@ -184,13 +185,28 @@ impl<R: HostStorage> Disassembler<R> for Arm64GuestContext<R> {
         self.start_pc = Some(start_pos);
         self.disas_pos = Some(start_pos);
         loop {
+            let pc = self.next_pc();
             if self.ops.len() >= tb_size {
-                let next = self.alloc_u64(self.next_pc() as u64);
+                let next = self.alloc_u64(pc as u64);
                 Op::push_trap(self, TrapOp::LOOKUP_TB, &next);
-                return DisasException::LimitReached(self.next_pc());
+                return DisasException::Continue(pc);
             } else {
+                // check if instruction is start of other TB
+                if pc != start_pos && self.targets.contains(&pc) {
+                    // jump target of some other TBs, terminate this here
+                    return DisasException::Continue(pc);
+                }
                 let insn = self.next_insn();
                 if let Err(e) = disas_single(self, insn) {
+                    // record the branch targets to break TBs
+                    if let DisasException::Branch(direct, aux) = e {
+                        if let Some(direct) = direct {
+                            self.targets.push(direct);
+                        }
+                        if let Some(aux) = aux {
+                            self.targets.push(aux);
+                        }
+                    }
                     return e;
                 }
             }

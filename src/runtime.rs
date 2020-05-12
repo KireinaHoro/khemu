@@ -2,8 +2,8 @@ extern crate log;
 
 use crate::guest::*;
 use crate::host::dump_ir::DumpIRHostContext;
-use crate::host::HostContext;
-use std::collections::{BTreeMap, VecDeque};
+use crate::host::{HostBlock, HostContext};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::path::Path;
 use std::{env, fs};
 
@@ -58,50 +58,74 @@ pub fn read_elf() -> Result<Vec<u8>, String> {
 
 pub mod loader;
 
-pub fn do_work() -> Result<(), String> {
+pub fn do_work<C: HostContext>() -> Result<(), String> {
     let elf = read_elf()?;
     let (mut disassembler, entry_point) = loader::load_program(elf)?;
-    let mut host = DumpIRHostContext::new(disassembler.get_guest_map());
     let mut start_positions = VecDeque::new();
+    let mut blk_cache: HashMap<_, C::BlockType> = HashMap::new();
 
     start_positions.push_back(entry_point as usize);
 
+    // trap handler
+    // shall modify start_positions when LOOKUP_TB is requested
+    let handler = |cause, val| {
+        warn!("Trap: cause={:#x} val={:#x}", cause, val);
+    };
+
+    let mut host = C::new(disassembler.get_guest_map(), handler);
+
     let mut ret = None;
-    while let Some(start_pos) = start_positions.pop_front() {
-        let result = disassembler.disas_block(start_pos, DEFAULT_TB_SIZE);
-        let tb = disassembler.get_tb();
-        info!("Ending TB @ {:#x} with reason: {}", tb.start_pc, result);
-        match result {
-            DisasException::Unexpected(s) => {
-                ret = Some(s);
-                host.emit_block(tb, disassembler.get_tracking(), None);
-                break;
+    while let Some(&start_pos) = start_positions.front() {
+        match blk_cache.get(&start_pos) {
+            // found block, execute
+            Some(blk) => {
+                info!("Executing host block for guest {:#x}", start_pos);
+                blk.execute(&mut host);
+                start_positions.pop_front();
             }
-            e => {
-                // find blocks that can be found statically
-                match e {
-                    DisasException::Branch(Some(taken), Some(not_taken)) => {
-                        // both destinations are known
-                        start_positions.push_back(taken);
-                        start_positions.push_back(not_taken);
+            // not found, translate and insert
+            None => {
+                let result = disassembler.disas_block(start_pos, DEFAULT_TB_SIZE);
+                let tb = disassembler.get_tb();
+                match result {
+                    DisasException::Unexpected(s) => {
+                        error!("Ending TB @ {:#x} with error: {}", tb.start_pc, s);
+                        ret = Some(s);
+                        // dummy backends like DumpIR may need to print
+                        let blk = host.emit_block(tb, disassembler.get_tracking(), None);
+                        info!("Executing host block for guest {:#x}", start_pos);
+                        blk.execute(&mut host);
+                        break;
                     }
-                    DisasException::LimitReached(dest)
-                    | DisasException::Branch(Some(dest), None)
-                    | DisasException::Branch(None, Some(dest)) => {
-                        // only one destination is known
-                        start_positions.push_back(dest);
-                    }
-                    _ => {
-                        // none of the jump targets are known
-                        // bail out, wait for actual LOOKUP trap
+                    e => {
+                        info!("Ending TB @ {:#x} with reason: {}", tb.start_pc, e);
+                        // find blocks that can be found statically
+                        match e {
+                            DisasException::Branch(Some(taken), Some(not_taken)) => {
+                                // both destinations are known
+                                start_positions.push_back(taken);
+                                start_positions.push_back(not_taken);
+                            }
+                            DisasException::Continue(dest)
+                            | DisasException::Branch(Some(dest), None)
+                            | DisasException::Branch(None, Some(dest)) => {
+                                // only one destination is known
+                                start_positions.push_back(dest);
+                            }
+                            _ => {
+                                // none of the jump targets are known
+                                // bail out, wait for actual LOOKUP trap
+                            }
+                        }
+
+                        // emit backend instructions
+                        let blk = host.emit_block(tb, disassembler.get_tracking(), Some(e));
+
+                        // record in cache, run it next round
+                        blk_cache.insert(start_pos, blk);
+                        continue;
                     }
                 }
-
-                // emit backend instructions
-                host.emit_block(tb, disassembler.get_tracking(), Some(e));
-
-                // TODO(jsteward) run generated instructions
-                // TODO(jsteward) handle trap to add new targets to `start_positions`
             }
         }
     }
