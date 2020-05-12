@@ -2,7 +2,6 @@
 
 use crate::guest::TranslationBlock;
 use crate::host::*;
-use crate::ir::op::*;
 use crate::ir::storage::HostStorage;
 use crate::runtime::GuestMap;
 use std::fmt::{Display, Error, Formatter};

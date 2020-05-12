@@ -91,4 +91,13 @@ pub fn disas_movw_imm<R: HostStorage>(
     Ok(())
 }
 
-disas_stub![pc_rel_addr, logic_imm, bitfield, extract];
+pub fn disas_pc_rel_addr<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), DisasException> {
+    Err(DisasException::Unexpected(
+        "pc_rel_addr work in progress".to_owned(),
+    ))
+}
+
+disas_stub![logic_imm, bitfield, extract];

@@ -90,38 +90,14 @@ pub fn disas_ldst_pair<R: HostStorage>(
         if is_load {
             // do not modify rt before recognizing any exception from the second load
             let tmp = ctx.alloc_val(ValueType::U64);
-            do_ldst(
-                ctx,
-                is_load,
-                &tmp,
-                &clean_addr,
-                MemOp::from_size(size) | MemOp::from_sign(is_signed),
-            );
+            do_ldst(ctx, is_load, is_signed, false, size, &tmp, &clean_addr);
             Op::push_add(ctx, &clean_addr, &clean_addr, &size_val);
-            do_ldst(
-                ctx,
-                is_load,
-                &rt2,
-                &clean_addr,
-                MemOp::from_size(size) | MemOp::from_sign(is_signed),
-            );
+            do_ldst(ctx, is_load, is_signed, false, size, &rt2, &clean_addr);
             Op::push_mov(ctx, &rt, &tmp);
         } else {
-            do_ldst(
-                ctx,
-                is_load,
-                &rt,
-                &clean_addr,
-                MemOp::from_size(size) | MemOp::from_sign(is_signed),
-            );
+            do_ldst(ctx, is_load, is_signed, false, size, &rt, &clean_addr);
             Op::push_add(ctx, &clean_addr, &clean_addr, &size_val);
-            do_ldst(
-                ctx,
-                is_load,
-                &rt2,
-                &clean_addr,
-                MemOp::from_size(size) | MemOp::from_sign(is_signed),
-            );
+            do_ldst(ctx, is_load, is_signed, false, size, &rt2, &clean_addr);
         }
     }
 
@@ -207,7 +183,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
 
     let is_store;
     let is_signed;
-    let is_extended;
+    let mut is_extended = false;
 
     let mut size = size;
 
@@ -253,9 +229,11 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
         do_ldst(
             ctx,
             !is_store,
+            is_signed,
+            is_extended,
+            size,
             &rt,
             &clean_addr,
-            MemOp::from_size(size) | MemOp::from_sign(is_signed),
         );
     }
 

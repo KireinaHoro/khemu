@@ -5,11 +5,9 @@ use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
 use crate::util::*;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::iter::*;
 use std::rc::{Rc, Weak};
-
-use log::*;
 
 pub type InsnType = u32;
 

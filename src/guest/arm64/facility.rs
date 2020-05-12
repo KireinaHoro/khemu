@@ -59,15 +59,27 @@ pub fn clean_data_tbi<R: HostStorage>(
 pub fn do_ldst<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     is_load: bool,
+    sign: bool,
+    extend: bool,
+    size: u64,
     reg: &Rc<KHVal<R>>,
     addr: &Rc<KHVal<R>>,
-    mem_op: MemOp,
 ) {
     (if is_load {
         Op::push_load
     } else {
         Op::push_store
-    })(ctx, reg, addr, mem_op | MemOp::GUEST_LE);
+    })(
+        ctx,
+        reg,
+        addr,
+        MemOp::from_sign(sign) | MemOp::from_size(size) | MemOp::GUEST_LE,
+    );
+
+    if is_load && extend && sign {
+        assert!(size < 8);
+        Op::push_extuwq(ctx, reg, reg);
+    }
 }
 
 fn get_flags<R: HostStorage>(

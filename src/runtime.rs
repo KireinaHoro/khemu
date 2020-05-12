@@ -11,6 +11,8 @@ use log::*;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
+pub const DEFAULT_TB_SIZE: usize = 4096;
+
 pub type GuestMap = Rc<RefCell<BTreeMap<usize, Vec<u8>>>>;
 
 pub trait GuestMapMethods: Sized {
@@ -65,18 +67,17 @@ pub fn do_work() -> Result<(), String> {
     start_positions.push_back(entry_point as usize);
 
     let mut ret = None;
-    println!("IR generated:");
     while let Some(start_pos) = start_positions.pop_front() {
-        match disassembler.disas_block(start_pos, 4096) {
+        let result = disassembler.disas_block(start_pos, DEFAULT_TB_SIZE);
+        let tb = disassembler.get_tb();
+        info!("Ending TB @ {:#x} with reason: {}", tb.start_pc, result);
+        match result {
             DisasException::Unexpected(s) => {
                 ret = Some(s);
-                host.emit_block(disassembler.get_tb());
+                host.emit_block(tb);
                 break;
             }
             e => {
-                let tb = disassembler.get_tb();
-                info!("TB @ {:#x} finished with \"{}\"", tb.start_pc, e);
-
                 // find blocks that can be found statically
                 match e {
                     DisasException::Branch(Some(taken), Some(not_taken)) => {

@@ -1,4 +1,3 @@
-use super::ir::op::Op;
 use super::ir::storage::*;
 use crate::guest::TranslationBlock;
 
