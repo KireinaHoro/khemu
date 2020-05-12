@@ -95,9 +95,24 @@ pub fn disas_pc_rel_addr<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
 ) -> Result<(), DisasException> {
-    Err(DisasException::Unexpected(
-        "pc_rel_addr work in progress".to_owned(),
-    ))
+    let page = extract(insn, 31, 1);
+    let rd = extract(insn, 0, 5);
+    let rd = ctx.reg(rd as usize);
+
+    let offset = sextract(insn as i64, 5, 19); // immhi
+    let mut offset = offset << 2 | extract(insn, 29, 2) as i64; // immlo
+    let mut base = ctx.curr_pc();
+
+    if page == 1 {
+        // ADRP: page based
+        base &= !0xfff;
+        offset <<= 12;
+    }
+
+    let val = ctx.alloc_u64(base as u64 + offset as u64);
+    Op::push_mov(ctx, &rd, &val);
+
+    Ok(())
 }
 
 disas_stub![logic_imm, bitfield, extract];
