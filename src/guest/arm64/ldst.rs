@@ -124,20 +124,116 @@ pub fn disas_ldst_reg_imm9<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
     opc: u32,
-    size: u32,
-    rt: u32,
+    mut size: u32,
+    rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
-    Err(DisasException::Unexpected(
-        "ldst_reg_imm9 work in progress".to_owned(),
-    ))
+    let rn = extract(insn, 5, 5) as usize;
+    let idx = extract(insn, 10, 2);
+    let imm9 = sextract(insn as i64, 12, 9);
+
+    let is_unpriv = idx == 2;
+    let mut is_signed = false;
+    let mut is_store = false;
+    let mut is_extended = false;
+
+    let post_index;
+    let writeback;
+
+    if is_vector {
+        size |= (opc & 2) << 1;
+        if size > 4 || is_unpriv {
+            return unallocated(ctx, insn);
+        }
+        is_store = (opc & 1) == 0;
+        if !fp_access_check(ctx) {
+            return Ok(());
+        }
+    } else {
+        if size == 3 && opc == 2 {
+            // prfm - prefetch
+            if idx != 0 {
+                return unallocated(ctx, insn);
+            }
+            return Ok(());
+        }
+        if opc == 3 && size > 1 {
+            return unallocated(ctx, insn);
+        }
+        is_store = opc == 0;
+        is_signed = extract(opc, 1, 1) == 1;
+        is_extended = size < 3 && extract(opc, 0, 1) == 1;
+    }
+
+    match idx {
+        0 | 2 => {
+            post_index = false;
+            writeback = false;
+        }
+        1 => {
+            post_index = true;
+            writeback = true;
+        }
+        3 => {
+            post_index = false;
+            writeback = true;
+        }
+        _ => unreachable!(),
+    }
+
+    if rn == 31 {
+        check_sp_alignment(ctx);
+    }
+
+    let dirty_addr = read_cpu_reg_sp(ctx, rn, true);
+    let imm_val = ctx.alloc_u64(imm9.abs().try_into().unwrap());
+    if !post_index {
+        (if imm9 >= 0 {
+            Op::push_add
+        } else {
+            Op::push_sub
+        })(ctx, &dirty_addr, &dirty_addr, &imm_val);
+    }
+    let clean_addr = clean_data_tbi(ctx, &dirty_addr);
+
+    let size = 1 << size as u64; // our ld / st accepts bytes
+
+    if is_vector {
+        // TODO(jsteward) implement vector/SIMD
+        return unallocated(ctx, insn);
+    } else {
+        let rt = ctx.reg(rt);
+
+        do_ldst(
+            ctx,
+            !is_store,
+            is_signed,
+            is_extended,
+            size,
+            &rt,
+            &clean_addr,
+        );
+    }
+
+    if writeback {
+        if post_index {
+            (if imm9 >= 0 {
+                Op::push_add
+            } else {
+                Op::push_sub
+            })(ctx, &dirty_addr, &dirty_addr, &imm_val);
+        }
+        Op::push_mov(ctx, &ctx.reg_sp(rn), &dirty_addr);
+    }
+
+    Ok(())
 }
 
 pub fn disas_ldst_atomic<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
     size: u32,
-    rt: u32,
+    rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
     Err(DisasException::Unexpected(
@@ -150,7 +246,7 @@ pub fn disas_ldst_reg_offset<R: HostStorage>(
     insn: InsnType,
     opc: u32,
     size: u32,
-    rt: u32,
+    rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
     Err(DisasException::Unexpected(
@@ -162,7 +258,7 @@ pub fn disas_ldst_pac<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
     size: u32,
-    rt: u32,
+    rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
     Err(DisasException::Unexpected(
@@ -175,7 +271,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
     insn: InsnType,
     opc: u32,
     size: u32,
-    rt: u32,
+    rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
     let rn = extract(insn, 5, 5);
@@ -244,7 +340,7 @@ pub fn disas_ldst_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
 ) -> Result<(), DisasException> {
-    let rt = extract(insn, 0, 5);
+    let rt = extract(insn, 0, 5) as usize;
     let opc = extract(insn, 22, 2);
     let is_vector = extract(insn, 26, 1) == 1;
     let size = extract(insn, 30, 2);
