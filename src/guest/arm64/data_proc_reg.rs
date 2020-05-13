@@ -67,13 +67,13 @@ pub fn disas_logic_reg<R: HostStorage>(
         if invert == 1 {
             Op::push_not(ctx, &rd, &rm);
             if !sf {
-                Op::push_extuwq(ctx, &rd, &rd);
+                Op::push_extulq(ctx, &rd, &rd);
             }
         } else {
             if sf {
                 Op::push_mov(ctx, &rd, &rm);
             } else {
-                Op::push_extuwq(ctx, &rd, &rm);
+                Op::push_extulq(ctx, &rd, &rm);
             }
         }
         return Ok(());
@@ -128,7 +128,7 @@ pub fn disas_logic_reg<R: HostStorage>(
     }
 
     if !sf {
-        Op::push_extuwq(ctx, &rd, &rd);
+        Op::push_extulq(ctx, &rd, &rd);
     }
 
     if opc == 3 {
@@ -138,8 +138,53 @@ pub fn disas_logic_reg<R: HostStorage>(
     Ok(())
 }
 
+pub fn disas_add_sub_ext_reg<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), DisasException> {
+    let rd = extract(insn, 0, 5) as usize;
+    let rn = extract(insn, 5, 5) as usize;
+    let imm3 = extract(insn, 10, 3);
+    let option = extract(insn, 13, 3);
+    let rm = extract(insn, 16, 5) as usize;
+    let opt = extract(insn, 22, 2);
+    let setflags = extract(insn, 29, 1) == 1;
+    let sub_op = extract(insn, 30, 1) == 1;
+    let sf = extract(insn, 31, 1) == 1;
+
+    if imm3 > 4 || opt != 0 {
+        return unallocated(ctx, insn);
+    }
+
+    // non-flag version may use SP
+    let rd = if setflags {
+        ctx.reg(rd)
+    } else {
+        ctx.reg_sp(rd)
+    };
+    let rn = read_cpu_reg_sp(ctx, rn, sf);
+    let rm = read_cpu_reg(ctx, rm, sf);
+    do_ext_and_shift_reg(ctx, &rm, &rm, option, imm3);
+
+    let result = ctx.alloc_val(ValueType::U64);
+
+    if !setflags {
+        (if sub_op { Op::push_sub } else { Op::push_add })(ctx, &result, &rn, &rm);
+    } else {
+        // update condition codes
+        if sub_op {
+            do_sub_cc(ctx, sf, &result, &rn, &rm);
+        } else {
+            do_add_cc(ctx, sf, &result, &rn, &rm);
+        }
+    }
+
+    (if sf { Op::push_mov } else { Op::push_extulq })(ctx, &rd, &result);
+
+    Ok(())
+}
+
 disas_stub![
-    add_sub_ext_reg,
     add_sub_reg,
     adc_sbc,
     rotate_right_into_flags,

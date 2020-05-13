@@ -42,7 +42,7 @@ pub fn disas_add_sub_imm<R: HostStorage>(
     (if is_64bit {
         Op::push_mov
     } else {
-        Op::push_extuwq
+        Op::push_extulq
     })(ctx, &rd, &result);
 
     Ok(())
@@ -82,7 +82,7 @@ pub fn disas_movw_imm<R: HostStorage>(
             let imm = ctx.alloc_u64(imm);
             Op::push_depos(ctx, &rd, &rd, &imm, pos as u64, 16);
             if !sf {
-                Op::push_extuwq(ctx, &rd, &rd);
+                Op::push_extulq(ctx, &rd, &rd);
             }
         }
         _ => return unallocated(ctx, insn),

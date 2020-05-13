@@ -14,7 +14,9 @@ gen_ops! {
     },
     ValueType::U64 {  // q - 64bit word
         unary: Neg, Not, Mov, Bswap;
-        convert: ExtUwq, ExtSwq;  // convert 32bit to 64bit
+        convert: ExtUlq, ExtSlq;  // convert 32bit to 64bit
+        convert: ExtUwq, ExtSwq;  // convert 16bit to 64bit
+        convert: ExtUbq, ExtSbq;  // convert 8bit to 64bit
         binary: Add, Sub, Mul, Div, Rem, Remu; // arithmetic
         binary: And, Or, Xor, Andc, Eqv, Nand, Nor, Orc, Clz, Ctz; // logical
         binary: Shl, Shr, Sar, Rotl, Rotr; // shifts / rotates
@@ -31,7 +33,7 @@ gen_ops! {
         override_maker: Mov;
         override_maker: Load, Store; // to accept MemOp
         override_maker: Setc, Movc;  // to accept CondOp and to allow multiple types
-        override_maker: Add, Sub, ExtUwq;    // simple optimizations
+        override_maker: Add, Sub, ExtUlq;    // simple optimizations
         override_maker: Trap;  // argument form, inject TB end
         override_maker: ExtrU, ExtrS, Depos; // to accept immediate value for ofs len
     },

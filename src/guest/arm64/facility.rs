@@ -12,7 +12,7 @@ pub fn read_cpu_reg<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg(reg);
-    (if sf { Op::push_mov } else { Op::push_extuwq })(ctx, &v, &src);
+    (if sf { Op::push_mov } else { Op::push_extulq })(ctx, &v, &src);
     v
 }
 
@@ -24,7 +24,7 @@ pub fn read_cpu_reg_sp<R: HostStorage>(
 ) -> Rc<KHVal<R>> {
     let v = ctx.alloc_val(ValueType::U64);
     let src = ctx.reg_sp(reg);
-    (if sf { Op::push_mov } else { Op::push_extuwq })(ctx, &v, &src);
+    (if sf { Op::push_mov } else { Op::push_extulq })(ctx, &v, &src);
     v
 }
 
@@ -78,7 +78,7 @@ pub fn do_ldst<R: HostStorage>(
 
     if is_load && extend && sign {
         assert!(size < 8);
-        Op::push_extuwq(ctx, reg, reg);
+        Op::push_extulq(ctx, reg, reg);
     }
 }
 
@@ -136,7 +136,7 @@ pub fn do_add_cc<R: HostStorage>(
         Op::push_xorw(ctx, &vf, &nf, &t0_32);
         Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
         Op::push_andcw(ctx, &vf, &vf, &tmp);
-        Op::push_extuwq(ctx, dest, &nf);
+        Op::push_extulq(ctx, dest, &nf);
     }
 }
 
@@ -176,7 +176,7 @@ pub fn do_sub_cc<R: HostStorage>(
         Op::push_xorw(ctx, &vf, &nf, &t0_32);
         Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
         Op::push_andcw(ctx, &vf, &vf, &tmp);
-        Op::push_extuwq(ctx, dest, &nf);
+        Op::push_extulq(ctx, dest, &nf);
     }
 }
 
@@ -300,7 +300,7 @@ pub fn do_shift<R: HostStorage>(
         A64Shift::LSR => Op::push_shr(ctx, dest, src, shift_amount),
         A64Shift::ASR => {
             if !sf {
-                Op::push_extswq(ctx, dest, src);
+                Op::push_extslq(ctx, dest, src);
             }
             Op::push_sar(ctx, dest, if sf { src } else { dest }, shift_amount)
         }
@@ -313,14 +313,14 @@ pub fn do_shift<R: HostStorage>(
                 Op::push_extrl(ctx, &t0, src);
                 Op::push_extrl(ctx, &t1, shift_amount);
                 Op::push_rotrw(ctx, &t0, &t0, &t1);
-                Op::push_extuwq(ctx, dest, &t0);
+                Op::push_extulq(ctx, dest, &t0);
             }
         }
         _ => unreachable!(),
     }
 
     if !sf {
-        Op::push_extuwq(ctx, dest, dest);
+        Op::push_extulq(ctx, dest, dest);
     }
 }
 
@@ -343,6 +343,40 @@ pub fn do_shift_imm<R: HostStorage>(
     } else {
         let shift_i = ctx.alloc_u64(shift_i as u64);
         do_shift(ctx, dest, src, sf, shift_type, &shift_i);
+    }
+}
+
+pub fn do_ext_and_shift_reg<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    dest: &Rc<KHVal<R>>,
+    src: &Rc<KHVal<R>>,
+    option: u32,
+    shift: u32,
+) {
+    let extsize = extract(option, 0, 2);
+    let is_signed = extract(option, 2, 1) == 1;
+
+    (if is_signed {
+        match extsize {
+            0 => Op::push_extsbq,
+            1 => Op::push_extswq,
+            2 => Op::push_extslq,
+            3 => Op::push_mov,
+            _ => unreachable!(),
+        }
+    } else {
+        match extsize {
+            0 => Op::push_extubq,
+            1 => Op::push_extuwq,
+            2 => Op::push_extulq,
+            3 => Op::push_mov,
+            _ => unreachable!(),
+        }
+    })(ctx, dest, src);
+
+    if shift != 0 {
+        let shift = ctx.alloc_u64(shift as u64);
+        Op::push_shl(ctx, dest, dest, &shift);
     }
 }
 

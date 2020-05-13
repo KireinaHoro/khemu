@@ -37,10 +37,10 @@ impl<R: HostStorage> Op<R> {
         Op::_push_sub(ctx, rd, rs1, rs2);
     }
 
-    pub fn push_extuwq(ctx: &mut impl DisasContext<R>, rd: &Rc<KHVal<R>>, rs1: &Rc<KHVal<R>>) {
+    pub fn push_extulq(ctx: &mut impl DisasContext<R>, rd: &Rc<KHVal<R>>, rs1: &Rc<KHVal<R>>) {
         if let Some(0) = rd.storage.borrow().try_as_u64() {
             return;
         }
-        Op::_push_extuwq(ctx, rd, rs1);
+        Op::_push_extulq(ctx, rd, rs1);
     }
 }
