@@ -7,7 +7,7 @@ pub fn disas_exc_sys<R: HostStorage>(
 ) -> Result<(), DisasException> {
     (if extract(insn, 24, 1) == 1 {
         if extract(insn, 22, 2) == 0 {
-            disas_system
+            super::system::disas_system
         } else {
             super::unallocated
         }
@@ -148,4 +148,4 @@ pub fn disas_uncond_b_reg<R: HostStorage>(
     Err(DisasException::Branch(None, None))
 }
 
-disas_stub![test_b_imm, system, exc];
+disas_stub![test_b_imm, exc];
