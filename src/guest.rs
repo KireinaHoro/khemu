@@ -24,7 +24,7 @@ pub enum DisasException {
 impl Display for DisasException {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            DisasException::Continue(d) => write!(f, "TB size exceeded, next instr: {:#x}", d),
+            DisasException::Continue(d) => write!(f, "direct continue, next instr: {:#x}", d),
             DisasException::Branch(d, a) => {
                 let df = if let Some(a) = d {
                     format!("{:#x}", a)

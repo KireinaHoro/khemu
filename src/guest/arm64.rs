@@ -187,6 +187,7 @@ impl<R: HostStorage> Disassembler<R> for Arm64GuestContext<R> {
         loop {
             let pc = self.next_pc();
             if self.ops.len() >= tb_size {
+                // TB size exceeded limit, starting new one
                 let next = self.alloc_u64(pc as u64);
                 Op::push_trap(self, TrapOp::LOOKUP_TB, &next);
                 return DisasException::Continue(pc);

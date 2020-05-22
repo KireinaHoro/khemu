@@ -67,7 +67,7 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
     start_positions.push_back(entry_point as usize);
 
     // trap handler
-    // shall modify start_positions when LOOKUP_TB is requested
+    // TODO(jsteward) lookup new start_positions when LOOKUP_TB is requested
     let handler = |cause, val| {
         warn!("Trap: cause={:#x} val={:#x}", cause, val);
     };
@@ -91,25 +91,29 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
                     DisasException::Unexpected(s) => {
                         error!("Ending TB @ {:#x} with error: {}", tb.start_pc, s);
                         ret = Some(s);
-                        // dummy backends like DumpIR may need to print
-                        let blk = host.emit_block(tb, disassembler.get_tracking(), None);
-                        info!("Executing host block for guest {:#x}", start_pos);
-                        blk.execute(&mut host);
                         break;
                     }
                     e => {
                         info!("Ending TB @ {:#x} with reason: {}", tb.start_pc, e);
                         // find blocks that can be found statically
                         match e {
+                            DisasException::Continue(dest) => {
+                                // Size exceeded or unconditional jump
+                                // insert target right after pending
+                                let waiting = start_positions.pop_front().unwrap();
+                                start_positions.push_front(dest);
+                                start_positions.push_front(waiting);
+                            }
                             DisasException::Branch(Some(taken), Some(not_taken)) => {
                                 // both destinations are known
+                                // TODO(jsteward) modify to fit proper translation branch prediction
                                 start_positions.push_back(taken);
                                 start_positions.push_back(not_taken);
                             }
-                            DisasException::Continue(dest)
-                            | DisasException::Branch(Some(dest), None)
+                            DisasException::Branch(Some(dest), None)
                             | DisasException::Branch(None, Some(dest)) => {
                                 // only one destination is known
+                                // TODO(jsteward) modify to fit proper translation branch prediction
                                 start_positions.push_back(dest);
                             }
                             _ => {
