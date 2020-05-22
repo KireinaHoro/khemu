@@ -184,13 +184,63 @@ pub fn disas_add_sub_ext_reg<R: HostStorage>(
     Ok(())
 }
 
+pub fn disas_cond_select<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), DisasException> {
+    if extract(insn, 29, 1) == 1 || extract(insn, 11, 1) == 1 {
+        return unallocated(ctx, insn);
+    }
+
+    let sf = extract(insn, 31, 1) == 1;
+    let else_inv = extract(insn, 30, 1) == 1;
+    let rm = extract(insn, 16, 5) as usize;
+    let cond = extract(insn, 12, 4);
+    let else_inc = extract(insn, 10, 1) == 1;
+    let rn = extract(insn, 5, 5) as usize;
+    let rd = extract(insn, 0, 5) as usize;
+
+    let rd = ctx.reg(rd);
+    let Arm64CC { mut cond, value } = test_cc(ctx, cond);
+    let one = ctx.alloc_u64(1);
+
+    // NZCV uses u32 val
+    let zero = ctx.alloc_u32(0);
+
+    if rn == 31 && rm == 31 && (else_inc ^ else_inv) {
+        // cset & csetm
+        cond.invert();
+        Op::push_setc(ctx, &rd, &value, &zero, cond);
+        if else_inv {
+            Op::push_neg(ctx, &rd, &rd);
+        }
+    } else {
+        let t_true = ctx.reg(rn);
+        let t_false = read_cpu_reg(ctx, rm, true);
+        if else_inc && else_inc {
+            Op::push_neg(ctx, &t_false, &t_false);
+        } else if else_inv {
+            Op::push_not(ctx, &t_false, &t_false);
+        } else if else_inc {
+            Op::push_add(ctx, &t_false, &t_false, &one);
+        }
+
+        Op::push_movc(ctx, &rd, &value, &zero, &t_true, &t_false, cond);
+    }
+
+    if !sf {
+        Op::push_extulq(ctx, &rd, &rd);
+    }
+
+    Ok(())
+}
+
 disas_stub![
     add_sub_reg,
     adc_sbc,
     rotate_right_into_flags,
     evaluate_into_flags,
     cc,
-    cond_select,
     data_proc_1src,
     data_proc_2src,
     data_proc_3src

@@ -180,12 +180,12 @@ pub fn do_sub_cc<R: HostStorage>(
     }
 }
 
-struct Arm64CC<R: HostStorage> {
-    cond: CondOp,
-    value: Rc<KHVal<R>>,
+pub struct Arm64CC<R: HostStorage> {
+    pub cond: CondOp,
+    pub value: Rc<KHVal<R>>,
 }
 
-fn test_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32) -> Arm64CC<R> {
+pub fn test_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32) -> Arm64CC<R> {
     let mut cond: CondOp;
     let value: Rc<KHVal<R>>;
     let (nf, zf, cf, vf) = get_flags(ctx);
