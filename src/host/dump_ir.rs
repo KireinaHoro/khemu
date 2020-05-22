@@ -2,7 +2,6 @@
 
 use crate::guest::{DisasException, TranslationBlock};
 use crate::host::*;
-use crate::ir::storage::*;
 use crate::runtime::GuestMap;
 use std::fmt::{Display, Error, Formatter};
 use std::rc::Weak;

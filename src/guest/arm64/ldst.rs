@@ -134,9 +134,9 @@ pub fn disas_ldst_reg_imm9<R: HostStorage>(
 
     let is_unpriv = idx == 2;
     let mut is_signed = false;
-    let mut is_store = false;
     let mut is_extended = false;
 
+    let is_store;
     let post_index;
     let writeback;
 

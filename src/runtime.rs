@@ -1,7 +1,6 @@
 extern crate log;
 
 use crate::guest::*;
-use crate::host::dump_ir::DumpIRHostContext;
 use crate::host::{HostBlock, HostContext};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::path::Path;
