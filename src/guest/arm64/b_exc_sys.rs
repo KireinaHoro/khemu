@@ -145,7 +145,7 @@ pub fn disas_uncond_b_reg<R: HostStorage>(
         _ => return unallocated(ctx, insn),
     }
 
-    Ok(())
+    Err(DisasException::Branch(None, None))
 }
 
 disas_stub![test_b_imm, system, exc];
