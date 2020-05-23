@@ -133,5 +133,8 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
         }
     }
 
-    Err(ret.unwrap())
+    match ret {
+        Some(r) => Err(r),
+        None => Ok(())
+    }
 }
