@@ -397,6 +397,74 @@ pub fn do_logic_cc<R: HostStorage>(
     Op::push_mov(ctx, &vf, &zero);
 }
 
+fn bitfield_replicate(mut mask: u64, mut e: u32) -> u64 {
+    assert_ne!(e, 0);
+
+    while e < 64 {
+        mask |= mask << e;
+        e *= 2;
+    }
+
+    mask
+}
+
+pub fn logic_imm_decode_wmask(immn: u32, imms: u32, immr: u32) -> Option<u64> {
+    assert!(immn < 2);
+    assert!(imms < 64);
+    assert!(immr < 64);
+
+    /* The bit patterns we create here are 64 bit patterns which
+     * are vectors of identical elements of size e = 2, 4, 8, 16, 32 or
+     * 64 bits each. Each element contains the same value: a run
+     * of between 1 and e-1 non-zero bits, rotated within the
+     * element by between 0 and e-1 bits.
+     *
+     * The element size and run length are encoded into immn (1 bit)
+     * and imms (6 bits) as follows:
+     * 64 bit elements: immn = 1, imms = <length of run - 1>
+     * 32 bit elements: immn = 0, imms = 0 : <length of run - 1>
+     * 16 bit elements: immn = 0, imms = 10 : <length of run - 1>
+     *  8 bit elements: immn = 0, imms = 110 : <length of run - 1>
+     *  4 bit elements: immn = 0, imms = 1110 : <length of run - 1>
+     *  2 bit elements: immn = 0, imms = 11110 : <length of run - 1>
+     * Notice that immn = 0, imms = 11111x is the only combination
+     * not covered by one of the above options; this is reserved.
+     * Further, <length of run - 1> all-ones is a reserved pattern.
+     *
+     * In all cases the rotation is by immr % e (and immr is 6 bits).
+     */
+
+    let len = 31 - (immn << 6 | !imms & 0x3f).leading_zeros();
+    if len < 1 {
+        return None;
+    }
+
+    let e = 1 << len;
+    let levels = e - 1;
+    let s = imms & levels;
+    let r = immr & levels;
+
+    if s == levels {
+        // <length of run - 1> mustn't be all-ones
+        return None;
+    }
+
+    fn bitmask64(len: u32) -> u64 {
+        assert!(len > 0 && len <= 64);
+        !0u64 >> (64 - len as u64)
+    }
+
+    let mut mask = bitmask64(s + 1);
+    if r != 0 {
+        mask = (mask >> r as u64) | (mask << (e - r) as u64);
+        mask &= bitmask64(e);
+    }
+
+    mask = bitfield_replicate(mask, e);
+
+    Some(mask)
+}
+
 // check that FP/neon is enabled
 // if not enabled, the caller should not emit any code for the instruction
 pub fn fp_access_check<R: HostStorage>(ctx: &mut Arm64GuestContext<R>) -> bool {

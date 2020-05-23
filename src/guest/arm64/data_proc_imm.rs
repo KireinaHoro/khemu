@@ -115,4 +115,63 @@ pub fn disas_pc_rel_addr<R: HostStorage>(
     Ok(())
 }
 
-disas_stub![logic_imm, bitfield, extract];
+pub fn disas_logic_imm<R: HostStorage>(
+    ctx: &mut Arm64GuestContext<R>,
+    insn: InsnType,
+) -> Result<(), DisasException> {
+    let sf = extract(insn, 31, 1) == 1;
+    let opc = extract(insn, 29, 2);
+    let is_n = extract(insn, 22, 1) == 1;
+    let immr = extract(insn, 16, 6);
+    let imms = extract(insn, 10, 6);
+    let rn = extract(insn, 5, 5) as usize;
+    let rd = extract(insn, 0, 5) as usize;
+
+    if !sf && is_n {
+        return unallocated(ctx, insn);
+    }
+
+    let rd_val;
+
+    if opc == 3 {
+        rd_val = ctx.reg(rd);
+    } else {
+        rd_val = ctx.reg_sp(rd);
+    }
+    let rn_val = ctx.reg(rn);
+
+    match logic_imm_decode_wmask(is_n as u32, imms, immr) {
+        None => return unallocated(ctx, insn),
+        Some(mut wmask) => {
+            if !sf {
+                wmask &= 0xffffffff;
+            }
+
+            let wmask = ctx.alloc_u64(wmask);
+            let mut is_and = false;
+            (match opc {
+                3 | 0 => {
+                    // ands, and
+                    is_and = true;
+                    Op::push_add
+                }
+                1 => Op::push_or,  // orr
+                2 => Op::push_xor, // eor
+                _ => unreachable!(),
+            })(ctx, &rd_val, &rn_val, &wmask);
+
+            if !sf && !is_and {
+                Op::push_extulq(ctx, &rd_val, &rd_val);
+            }
+
+            if opc == 3 {
+                // ands
+                do_logic_cc(ctx, sf, &rd_val);
+            }
+
+            Ok(())
+        }
+    }
+}
+
+disas_stub![bitfield, extract];
