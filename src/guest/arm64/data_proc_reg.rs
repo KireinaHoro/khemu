@@ -201,16 +201,23 @@ pub fn disas_cond_select<R: HostStorage>(
     let rd = extract(insn, 0, 5) as usize;
 
     let rd = ctx.reg(rd);
-    let Arm64CC { mut cond, value } = test_cc(ctx, cond);
+    let Arm64CC {
+        mut cond,
+        value: val32,
+    } = test_cc(ctx, cond);
+    let value = ctx.alloc_val(ValueType::U64);
+    Op::push_extslq(ctx, &value, &val32);
+
     let one = ctx.alloc_u64(1);
 
-    // NZCV uses u32 val
-    let zero = ctx.alloc_u32(0);
+    let zero = ctx.alloc_u64(0);
 
     if rn == 31 && rm == 31 && (else_inc ^ else_inv) {
         // cset & csetm
         cond.invert();
+
         Op::push_setc(ctx, &rd, &value, &zero, cond);
+
         if else_inv {
             Op::push_neg(ctx, &rd, &rd);
         }
