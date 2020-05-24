@@ -14,4 +14,4 @@ bitflags = "1.2"
 goblin = "0.2"
 log = "0.4"
 env_logger = "0.7"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm8-0" }
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }
