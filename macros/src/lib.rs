@@ -8,10 +8,10 @@ use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{braced, parse_macro_input, token, Expr, Ident, Result, Token};
+use syn::{braced, parse_macro_input, token, Path, Ident, Result, Token};
 
 struct GenOpSingle {
-    reg_type: Expr,
+    reg_type: Path,
     _brace: token::Brace,
     rules: Punctuated<OpRule, Token![;]>,
 }
@@ -20,7 +20,7 @@ impl Parse for GenOpSingle {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
         Ok(Self {
-            reg_type: input.parse()?,
+            reg_type: input.call(Path::parse_mod_style)?,
             _brace: braced!(content in input),
             rules: content.parse_terminated(OpRule::parse)?,
         })
