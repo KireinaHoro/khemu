@@ -2,6 +2,7 @@
 
 use crate::guest::{DisasException, TranslationBlock};
 use crate::host::*;
+use crate::ir::storage::*;
 use crate::runtime::GuestMap;
 use std::fmt::{Display, Error, Formatter};
 use std::rc::Weak;
@@ -39,27 +40,7 @@ impl Display for DumpIRHostStorage {
 }
 
 impl HostStorage for DumpIRHostStorage {
-    fn make_label() -> Self {
-        static mut COUNTER: u64 = 0;
-        let ret;
-        unsafe {
-            ret = DumpIRHostStorage::Label(COUNTER);
-            COUNTER += 1;
-        }
-        ret
-    }
-
-    fn make_u32(v: u32) -> Self {
-        DumpIRHostStorage::ImmU32(v)
-    }
-
-    fn make_u64(v: u64) -> Self {
-        DumpIRHostStorage::ImmU64(v)
-    }
-
-    fn make_f64(v: f64) -> Self {
-        DumpIRHostStorage::ImmF64(v)
-    }
+    type HostContext = DumpIRHostContext;
 
     fn try_as_u32(&self) -> Option<u32> {
         if let &DumpIRHostStorage::ImmU32(v) = self {
@@ -84,17 +65,15 @@ impl HostStorage for DumpIRHostStorage {
             None
         }
     }
-
-    fn make_named(name: String) -> Self {
-        DumpIRHostStorage::Named(name)
-    }
 }
 
 impl HostBlock for String {
-    fn execute(&self, ctx: &mut impl HostContext) {
+    fn execute(&self) {
         print!("{}", self);
     }
 }
+
+static mut DUMP_IR_CTX: Option<DumpIRHostContext> = None;
 
 impl HostContext for DumpIRHostContext {
     type StorageType = DumpIRHostStorage;
@@ -113,7 +92,39 @@ impl HostContext for DumpIRHostContext {
         ret
     }
 
-    fn new(_: GuestMap, handler: impl FnMut(u64, u64)) -> Self {
-        Self {}
+    fn init(_: GuestMap, handler: impl FnMut(u64, u64)) {
+        unsafe {
+            DUMP_IR_CTX = Some(Self {});
+        }
+    }
+
+    fn get() -> &'static mut Self {
+        unsafe { DUMP_IR_CTX.as_mut().unwrap() }
+    }
+
+    fn make_label(&self) -> Self::StorageType {
+        static mut COUNTER: u64 = 0;
+        let ret;
+        unsafe {
+            ret = DumpIRHostStorage::Label(COUNTER);
+            COUNTER += 1;
+        }
+        ret
+    }
+
+    fn make_u32(&self, v: u32) -> Self::StorageType {
+        DumpIRHostStorage::ImmU32(v)
+    }
+
+    fn make_u64(&self, v: u64) -> Self::StorageType {
+        DumpIRHostStorage::ImmU64(v)
+    }
+
+    fn make_f64(&self, v: f64) -> Self::StorageType {
+        DumpIRHostStorage::ImmF64(v)
+    }
+
+    fn make_named(&self, name: String) -> Self::StorageType {
+        DumpIRHostStorage::Named(name)
     }
 }

@@ -7,9 +7,11 @@ use log::info;
 use goblin::elf;
 use goblin::elf::header::*;
 use goblin::elf::program_header::pt_to_str;
+use std::rc::Rc;
 
 pub fn load_program<R: HostStorage>(
     buffer: Vec<u8>,
+    handler: impl FnMut(u64, u64),
 ) -> Result<(impl Disassembler<R>, u64), String> {
     let binary: elf::Elf = match elf::Elf::parse(&buffer) {
         Ok(b) => b,
@@ -52,6 +54,8 @@ pub fn load_program<R: HostStorage>(
             }
 
             info!("Entry point: {:#x}", binary.entry);
+
+            R::HostContext::init(Rc::clone(&map), handler);
 
             Ok((Arm64GuestContext::<R>::new(map), binary.entry))
         }

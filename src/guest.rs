@@ -1,5 +1,6 @@
 pub mod arm64;
 
+use crate::host::HostContext;
 use crate::ir::op::Op;
 use crate::ir::storage::*;
 use crate::runtime::GuestMap;
@@ -81,25 +82,25 @@ where
     // allocate a new label
     fn alloc_label(&mut self) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::Label);
-        *ret.storage.borrow_mut() = R::make_label();
+        *ret.storage.borrow_mut() = R::HostContext::get().make_label();
         ret
     }
     // allocate u32 immediate value
     fn alloc_u32(&mut self, v: u32) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::U32);
-        *ret.storage.borrow_mut() = R::make_u32(v);
+        *ret.storage.borrow_mut() = R::HostContext::get().make_u32(v);
         ret
     }
     // allocate u64 immediate value
     fn alloc_u64(&mut self, v: u64) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::U64);
-        *ret.storage.borrow_mut() = R::make_u64(v);
+        *ret.storage.borrow_mut() = R::HostContext::get().make_u64(v);
         ret
     }
     // allocate f64 immediate value
     fn alloc_f64(&mut self, v: f64) -> Rc<KHVal<R>> {
         let ret = self.alloc_val(ValueType::F64);
-        *ret.storage.borrow_mut() = R::make_f64(v);
+        *ret.storage.borrow_mut() = R::HostContext::get().make_f64(v);
         ret
     }
 

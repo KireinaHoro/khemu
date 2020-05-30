@@ -1,5 +1,6 @@
 extern crate num_traits;
 
+use crate::host::HostContext;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{Debug, Display, Error, Formatter};
@@ -9,15 +10,11 @@ use std::hash::{Hash, Hasher};
 // all implementers must provide support for immediate numbers
 // a real host storage will probably support registers and memory as well
 pub trait HostStorage: Default + Display {
-    fn make_label() -> Self;
-    fn make_u32(v: u32) -> Self;
-    fn make_u64(v: u64) -> Self;
-    fn make_f64(v: f64) -> Self;
+    type HostContext: HostContext<StorageType = Self> + 'static;
+
     fn try_as_u32(&self) -> Option<u32>;
     fn try_as_u64(&self) -> Option<u64>;
     fn try_as_f64(&self) -> Option<f64>;
-    // used to create named data, such as guest fixed registers
-    fn make_named(name: String) -> Self;
 }
 
 // valid value types
@@ -54,14 +51,14 @@ impl<R: HostStorage> KHVal<R> {
     pub fn named(name: String, ty: ValueType) -> Self {
         Self {
             ty,
-            storage: RefCell::new(R::make_named(name)),
+            storage: RefCell::new(R::HostContext::get().make_named(name)),
         }
     }
 
     pub fn label() -> Self {
         Self {
             ty: ValueType::Label,
-            storage: RefCell::new(R::make_label()),
+            storage: RefCell::new(R::HostContext::get().make_label()),
         }
     }
 
@@ -69,7 +66,7 @@ impl<R: HostStorage> KHVal<R> {
     pub fn u32(v: u32) -> Self {
         Self {
             ty: ValueType::U32,
-            storage: RefCell::new(R::make_u32(v)),
+            storage: RefCell::new(R::HostContext::get().make_u32(v)),
         }
     }
 
@@ -77,7 +74,7 @@ impl<R: HostStorage> KHVal<R> {
     pub fn u64(v: u64) -> Self {
         Self {
             ty: ValueType::U64,
-            storage: RefCell::new(R::make_u64(v)),
+            storage: RefCell::new(R::HostContext::get().make_u64(v)),
         }
     }
 
@@ -85,7 +82,7 @@ impl<R: HostStorage> KHVal<R> {
     pub fn f64(v: f64) -> Self {
         Self {
             ty: ValueType::F64,
-            storage: RefCell::new(R::make_f64(v)),
+            storage: RefCell::new(R::HostContext::get().make_f64(v)),
         }
     }
 }

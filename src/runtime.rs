@@ -57,13 +57,8 @@ pub fn read_elf() -> Result<Vec<u8>, String> {
 
 pub mod loader;
 
-pub fn do_work<C: HostContext>() -> Result<(), String> {
+pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
     let elf = read_elf()?;
-    let (mut disassembler, entry_point) = loader::load_program(elf)?;
-    let mut start_positions = VecDeque::new();
-    let mut blk_cache: HashMap<_, C::BlockType> = HashMap::new();
-
-    start_positions.push_back(entry_point as usize);
 
     // trap handler
     // TODO(jsteward) lookup new start_positions when LOOKUP_TB is requested
@@ -71,7 +66,11 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
         warn!("Trap: cause={:#x} val={:#x}", cause, val);
     };
 
-    let mut host = C::new(disassembler.get_guest_map(), handler);
+    let (mut disassembler, entry_point) = loader::load_program(elf, handler)?;
+    let mut start_positions = VecDeque::new();
+    let mut blk_cache: HashMap<_, C::BlockType> = HashMap::new();
+
+    start_positions.push_back(entry_point as usize);
 
     let mut ret = None;
     while let Some(&start_pos) = start_positions.front() {
@@ -79,7 +78,7 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
             // found block, execute
             Some(blk) => {
                 info!("Executing host block for guest {:#x}", start_pos);
-                blk.execute(&mut host);
+                blk.execute();
                 start_positions.pop_front();
             }
             // not found, translate and insert
@@ -122,7 +121,7 @@ pub fn do_work<C: HostContext>() -> Result<(), String> {
                         }
 
                         // emit backend instructions
-                        let blk = host.emit_block(tb, disassembler.get_tracking(), Some(e));
+                        let blk = C::get().emit_block(tb, disassembler.get_tracking(), Some(e));
 
                         // record in cache, run it next round
                         blk_cache.insert(start_pos, blk);
