@@ -3,7 +3,7 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::targets::{InitializationConfig, Target};
-use inkwell::OptimizationLevel;
+use inkwell::{AddressSpace, OptimizationLevel};
 
 use std::fmt::{Display, Error, Formatter};
 
@@ -12,6 +12,8 @@ use crate::host::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
 use bitflags::_core::cell::RefCell;
+use inkwell::types::FunctionType;
+use inkwell::values::{FloatValue, GlobalValue, IntValue};
 use std::collections::BTreeMap;
 use std::rc::{Rc, Weak};
 
@@ -22,35 +24,53 @@ pub struct LLVMHostContext<'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     execution_engine: ExecutionEngine<'ctx>,
+    fn_type: Option<FunctionType<'ctx>>,
 }
 
-pub enum LLVMHostStorage {}
+pub enum LLVMHostStorage<'ctx> {
+    Empty,
+    Global(GlobalValue<'ctx>),
+    IntV(IntValue<'ctx>),
+    FloatV(FloatValue<'ctx>),
+}
 
-impl Default for LLVMHostStorage {
+impl Default for LLVMHostStorage<'_> {
     fn default() -> Self {
-        unimplemented!()
+        LLVMHostStorage::Empty
     }
 }
 
-impl Display for LLVMHostStorage {
+impl Display for LLVMHostStorage<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         unimplemented!()
     }
 }
 
-impl HostStorage for LLVMHostStorage {
+impl HostStorage for LLVMHostStorage<'static> {
     type HostContext = LLVMHostContext<'static>;
 
     fn try_as_u32(&self) -> Option<u32> {
-        unimplemented!()
+        if let LLVMHostStorage::IntV(lv) = self {
+            lv.get_zero_extended_constant().map(|x| x as u32)
+        } else {
+            None
+        }
     }
 
     fn try_as_u64(&self) -> Option<u64> {
-        unimplemented!()
+        if let LLVMHostStorage::IntV(lv) = self {
+            lv.get_zero_extended_constant()
+        } else {
+            None
+        }
     }
 
     fn try_as_f64(&self) -> Option<f64> {
-        unimplemented!()
+        if let LLVMHostStorage::FloatV(lv) = self {
+            lv.get_constant().map(|x| x.0)
+        } else {
+            None
+        }
     }
 }
 
@@ -63,7 +83,7 @@ impl HostBlock for JitFunction<'_, GuestFunc> {
 static mut LLVM_CTX: Option<LLVMHostContext> = None;
 
 impl HostContext for LLVMHostContext<'static> {
-    type StorageType = LLVMHostStorage;
+    type StorageType = LLVMHostStorage<'static>;
     type BlockType = JitFunction<'static, GuestFunc>;
 
     fn emit_block(
@@ -72,7 +92,23 @@ impl HostContext for LLVMHostContext<'static> {
         tracking: &[Weak<KHVal<Self::StorageType>>],
         exception: Option<DisasException>,
     ) -> Self::BlockType {
-        unimplemented!()
+        let name = format!("func_{}", tb.start_pc);
+        let func = self
+            .module
+            .add_function(name.as_str(), self.fn_type.unwrap(), None);
+
+        let basic_block = self.context.append_basic_block(func, "entry");
+        self.builder.position_at_end(basic_block);
+
+        // TODO(jsteward) generate context restore
+
+        for op in tb.ops.into_iter() {
+            self.dispatch_op(op);
+        }
+
+        // TODO(jsteward) generate context store
+
+        unsafe { self.execution_engine.get_function(name.as_str()).unwrap() }
     }
 
     fn init(guest_map: GuestMap, handler: impl FnMut(u64, u64)) {
@@ -91,7 +127,11 @@ impl HostContext for LLVMHostContext<'static> {
                 module,
                 builder: context.create_builder(),
                 execution_engine,
+                fn_type: None,
             });
+
+            LLVM_CTX.unwrap().fn_type =
+                Some(LLVM_CTX.unwrap().context.void_type().fn_type(&[], false));
         }
     }
 
@@ -108,14 +148,35 @@ impl HostContext for LLVMHostContext<'static> {
     }
 
     fn make_u64(&self, v: u64) -> Self::StorageType {
-        unimplemented!()
+        let ty = self.context.i64_type();
+
+        LLVMHostStorage::IntV(ty.const_int(v, false))
     }
 
     fn make_f64(&self, v: f64) -> Self::StorageType {
         unimplemented!()
     }
 
-    fn make_named(&self, name: String) -> Self::StorageType {
-        unimplemented!()
+    fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType {
+        let global = match ty {
+            ValueType::U32 => self.module.add_global(
+                self.context.i32_type(),
+                Some(AddressSpace::Const),
+                name.as_ref(),
+            ),
+            ValueType::U64 => self.module.add_global(
+                self.context.i64_type(),
+                Some(AddressSpace::Const),
+                name.as_ref(),
+            ),
+            ValueType::F64 => self.module.add_global(
+                self.context.f64_type(),
+                Some(AddressSpace::Const),
+                name.as_ref(),
+            ),
+            _ => unreachable!(),
+        };
+
+        LLVMHostStorage::Global(global)
     }
 }

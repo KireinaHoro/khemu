@@ -51,7 +51,7 @@ impl<R: HostStorage> KHVal<R> {
     pub fn named(name: String, ty: ValueType) -> Self {
         Self {
             ty,
-            storage: RefCell::new(R::HostContext::get().make_named(name)),
+            storage: RefCell::new(R::HostContext::get().make_named(name, ty)),
         }
     }
 

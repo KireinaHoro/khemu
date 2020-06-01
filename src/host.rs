@@ -31,5 +31,5 @@ pub trait HostContext {
     fn make_u32(&self, v: u32) -> Self::StorageType;
     fn make_u64(&self, v: u64) -> Self::StorageType;
     fn make_f64(&self, v: f64) -> Self::StorageType;
-    fn make_named(&self, name: String) -> Self::StorageType;
+    fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType;
 }

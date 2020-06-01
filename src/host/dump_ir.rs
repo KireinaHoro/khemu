@@ -124,7 +124,7 @@ impl HostContext for DumpIRHostContext {
         DumpIRHostStorage::ImmF64(v)
     }
 
-    fn make_named(&self, name: String) -> Self::StorageType {
+    fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType {
         DumpIRHostStorage::Named(name)
     }
 }

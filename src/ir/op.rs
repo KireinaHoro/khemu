@@ -87,6 +87,7 @@ bitflags! {
         const LOOKUP_TB = 0;
         const UNDEF_OPCODE = 1;
         const ACCESS_FAULT = 2;
+        const SYSCALL = 3;
     }
 }
 
