@@ -82,6 +82,8 @@ impl HostBlock for JitFunction<'_, GuestFunc> {
 
 static mut LLVM_CTX: Option<LLVMHostContext> = None;
 
+impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {}
+
 impl HostContext for LLVMHostContext<'static> {
     type StorageType = LLVMHostStorage<'static>;
     type BlockType = JitFunction<'static, GuestFunc>;
