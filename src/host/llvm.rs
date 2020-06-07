@@ -104,8 +104,9 @@ impl HostContext for LLVMHostContext<'static> {
 
         // TODO(jsteward) generate context restore
 
+        // consume TB
         for op in tb.ops.into_iter() {
-            self.dispatch_op(op);
+            self.dispatch(op);
         }
 
         // TODO(jsteward) generate context store

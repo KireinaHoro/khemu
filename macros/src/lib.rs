@@ -168,12 +168,12 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .iter()
         .map(|(v, _)| {
             let mnemonic = &v[0];
-            let _lower = mnemonic.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", mnemonic.to_string().to_lowercase());
             let params = v.iter().skip(1);
             quote! {
-                pub fn gen_#_lower(&mut self,
-                    #( #params: &::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) {
-                    unimplemented!(stringify!(gen_#_lower))
+                fn #fn_name(&mut self,
+                    #( #params: ::std::rc::Rc<crate::ir::storage::KHVal<R>> ),*) {
+                    unimplemented!(stringify!(#fn_name))
                 }
             }
         })
@@ -182,11 +182,11 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .iter()
         .map(|(v, _)| {
             let mnemonic = &v[0];
-            let _lower = mnemonic.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", mnemonic.to_string().to_lowercase());
             let params = v.iter().skip(1);
             let args = params.clone();
             quote! {
-                Self::#mnemonic { #( #params ),* } => self.gen_#_lower(#( #args ),*),
+                Op::#mnemonic { #( #params ),* } => self.#fn_name(#( #args ),*),
             }
         })
         .into_iter();
@@ -244,12 +244,12 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let unary_codegen = unary
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                pub fn gen_#_lower(&mut self,
-                    rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                    rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
-                    unimplemented!(stringify!(gen_#_lower))
+                fn #fn_name(&mut self,
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                    unimplemented!(stringify!(#fn_name))
                 }
             }
         })
@@ -257,9 +257,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let unary_dispatch = unary
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                Self::#m { rd, rs1 } => self.gen_#_lower(rd, rs1),
+                Op::#m { rd, rs1 } => self.#fn_name(rd, rs1),
             }
         })
         .into_iter();
@@ -316,12 +316,12 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let convert_codegen = convert
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                pub fn gen_#_lower(&mut self,
-                    rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                    rs: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
-                    unimplemented!(stringify!(gen_#_lower))
+                fn #fn_name(&mut self,
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                    unimplemented!(stringify!(#fn_name))
                 }
             }
         })
@@ -329,9 +329,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let convert_dispatch = convert
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                Self::#m { rd, rs } => self.gen_#_lower(rd, rs),
+                Op::#m { rd, rs } => self.#fn_name(rd, rs),
             }
         })
         .into_iter();
@@ -393,13 +393,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let binary_codegen = binary
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                pub fn gen_#_lower(&mut self,
-                    rd: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                    rs1: &::std::rc::Rc<crate::ir::storage::KHVal<R>>,
-                    rs2: &::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
-                    unimplemented!(stringify!(gen_#_lower))
+                fn #fn_name(&mut self,
+                    rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
+                    rs2: ::std::rc::Rc<crate::ir::storage::KHVal<R>>) {
+                    unimplemented!(stringify!(#fn_name))
                 }
             }
         })
@@ -407,9 +407,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
     let binary_dispatch = binary
         .iter()
         .map(|(m, _)| {
-            let _lower = m.to_string().to_lowercase();
+            let fn_name = format_ident!("gen_{}", m.to_string().to_lowercase());
             quote! {
-                Self::#m { rd, rs1, rs2 } => self.gen_#_lower(rd, rs1, rs2),
+                Op::#m { rd, rs1, rs2 } => self.#fn_name(rd, rs1, rs2),
             }
         })
         .into_iter();
@@ -434,12 +434,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             }
         }
 
-        trait CodeGen<R: crate::ir::storage::HostStorage> {
-            #( #unary_codegen )*
-            #( #convert_codegen )*
-            #( #binary_codegen )*
-            #( #custom_codegen )*
-
+        pub trait CodeGen<R: crate::ir::storage::HostStorage> {
             fn dispatch(&mut self, op: Op<R>) {
                 match op {
                     #( #unary_dispatch )*
@@ -448,6 +443,11 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                     #( #custom_dispatch )*
                 }
             }
+
+            #( #unary_codegen )*
+            #( #convert_codegen )*
+            #( #binary_codegen )*
+            #( #custom_codegen )*
         }
 
         #( #unary_makers )*
