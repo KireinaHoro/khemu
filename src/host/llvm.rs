@@ -3,19 +3,19 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::targets::{InitializationConfig, Target};
+use inkwell::types::FunctionType;
+use inkwell::values::{FloatValue, GlobalValue, IntValue};
 use inkwell::{AddressSpace, OptimizationLevel};
 
+use std::collections::BTreeMap;
 use std::fmt::{Display, Error, Formatter};
+use std::rc::{Rc, Weak};
 
 use crate::guest::*;
 use crate::host::*;
+use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
-use bitflags::_core::cell::RefCell;
-use inkwell::types::FunctionType;
-use inkwell::values::{FloatValue, GlobalValue, IntValue};
-use std::collections::BTreeMap;
-use std::rc::{Rc, Weak};
 
 type GuestFunc = unsafe extern "C" fn() -> u64;
 
@@ -42,7 +42,7 @@ impl Default for LLVMHostStorage<'_> {
 
 impl Display for LLVMHostStorage<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        unimplemented!()
+        write!(f, "_")
     }
 }
 
@@ -130,8 +130,14 @@ impl HostContext for LLVMHostContext<'static> {
                 fn_type: None,
             });
 
-            LLVM_CTX.unwrap().fn_type =
-                Some(LLVM_CTX.unwrap().context.void_type().fn_type(&[], false));
+            LLVM_CTX.as_mut().unwrap().fn_type = Some(
+                LLVM_CTX
+                    .as_mut()
+                    .unwrap()
+                    .context
+                    .void_type()
+                    .fn_type(&[], false),
+            );
         }
     }
 
