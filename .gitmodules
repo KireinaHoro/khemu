@@ -1,0 +1,4 @@
+[submodule "third-party/inkwell"]
+	path = third-party/inkwell
+	url = https://github.com/TheDan64/inkwell
+	branch = llvm10-0
