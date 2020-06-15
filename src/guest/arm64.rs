@@ -287,7 +287,6 @@ macro_rules! disas_stub {
     ( $($handler:ident),* ) => {
         $(
             paste::item! {
-                #[allow(dead_code, unused)]
                 pub fn [< disas_ $handler >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), DisasException> {
                     Err(DisasException::Unexpected(format!("insn 0x{:0x}: {} not implemented", insn, stringify!($handler))))
                 }

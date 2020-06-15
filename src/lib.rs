@@ -1,4 +1,5 @@
 #![feature(vec_leak)]
+#![allow(dead_code, unused)]
 
 #[macro_use]
 extern crate bitflags;

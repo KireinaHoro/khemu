@@ -4,7 +4,6 @@ use super::{CondOp, MemOp};
 // read CPU register.
 // the SP encoding is used to represent XZR (hardwired zero) in some contexts.
 // If SP is needed, use `read_cpu_reg_sp`.
-#[allow(dead_code)]
 pub fn read_cpu_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     reg: usize,
