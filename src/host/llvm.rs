@@ -38,13 +38,19 @@ pub enum LLVMHostStorage<'ctx> {
 
 impl Default for LLVMHostStorage<'_> {
     fn default() -> Self {
+        // default unallocated storage for temporaries
         LLVMHostStorage::Empty
     }
 }
 
 impl Display for LLVMHostStorage<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "_")
+        match self {
+            LLVMHostStorage::Empty => write!(f, "_"),
+            LLVMHostStorage::Global(v) => write!(f, "{}", v.get_name().to_str().unwrap()),
+            LLVMHostStorage::IntV(v) => write!(f, "{}", v.print_to_string()),
+            LLVMHostStorage::FloatV(v) => write!(f, "{}", v.print_to_string()),
+        }
     }
 }
 
@@ -108,6 +114,7 @@ impl HostContext for LLVMHostContext<'static> {
 
         // consume TB
         for op in tb.ops.into_iter() {
+            println!("{}", op);
             self.dispatch(op);
         }
 
