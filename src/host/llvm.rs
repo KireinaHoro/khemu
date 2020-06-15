@@ -92,6 +92,19 @@ static mut LLVM_CTX: Option<LLVMHostContext> = None;
 
 type Reg = Rc<KHVal<LLVMHostStorage<'static>>>;
 
+macro_rules! store_result {
+    ($self:expr, $rd:expr, $result:expr) => {
+        let mut rd_storage = $rd.storage.borrow_mut();
+        match *rd_storage {
+            LLVMHostStorage::Empty => *rd_storage = LLVMHostStorage::IntV($result),
+            LLVMHostStorage::Global(v) => {
+                $self.builder.build_store(v.as_pointer_value(), $result);
+            }
+            _ => panic!("ssa violation: trying to write to to initialized value"),
+        }
+    };
+}
+
 impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
     fn gen_mov(&mut self, rd: Reg, rs1: Reg) {
         if let LLVMHostStorage::Empty = *rs1.storage.borrow() {}
@@ -103,15 +116,8 @@ impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
             LLVMHostStorage::IntV(v) => v,
             _ => panic!("not implemented"),
         };
+        store_result!(self, rd, result);
 
-        let mut rd_storage = rd.storage.borrow_mut();
-        match *rd_storage {
-            LLVMHostStorage::Empty => *rd_storage = LLVMHostStorage::IntV(result),
-            LLVMHostStorage::Global(v) => {
-                self.builder.build_store(v.as_pointer_value(), result);
-            }
-            _ => panic!("ssa violation: trying to mov to initialized value"),
-        }
     }
 }
 
