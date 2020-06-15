@@ -1,8 +1,8 @@
 use super::facility::*;
 use super::*;
 
-use std::convert::TryInto;
 use log::*;
+use std::convert::TryInto;
 
 pub fn disas_ldst_pair<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
