@@ -2,11 +2,13 @@ use super::facility::*;
 use super::*;
 
 use std::convert::TryInto;
+use log::*;
 
 pub fn disas_ldst_pair<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
 ) -> Result<(), DisasException> {
+    trace!("ldst_pair");
     let rt = extract(insn, 0, 5) as usize;
     let rn = extract(insn, 5, 5) as usize;
     let rt2 = extract(insn, 10, 5) as usize;
@@ -128,6 +130,7 @@ pub fn disas_ldst_reg_imm9<R: HostStorage>(
     rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
+    trace!("ldst_reg_imm9");
     let rn = extract(insn, 5, 5) as usize;
     let idx = extract(insn, 10, 2);
     let imm9 = sextract(insn as i64, 12, 9);
@@ -274,6 +277,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
     rt: usize,
     is_vector: bool,
 ) -> Result<(), DisasException> {
+    trace!("ldst_reg_unsigned_imm");
     let rn = extract(insn, 5, 5);
     let imm12 = extract(insn, 10, 12);
 
@@ -309,9 +313,12 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
     if rn == 31 {
         check_sp_alignment(ctx);
     }
+    trace!("Reading SP");
     let dirty_addr = read_cpu_reg_sp(ctx, rn as usize, true);
     let offset = ctx.alloc_u64((imm12 << size) as u64);
+    trace!("Calculating offset");
     Op::push_add(ctx, &dirty_addr, &dirty_addr, &offset);
+    trace!("Cleaning TBI");
     let clean_addr = clean_data_tbi(ctx, &dirty_addr);
 
     let size = 1 << size as u64;
@@ -322,6 +329,7 @@ pub fn disas_ldst_reg_unsigned_imm<R: HostStorage>(
     } else {
         let rt = ctx.reg(rt as usize);
         // FIXME we skipped the ISS (Instruction-Specific Syndrome) calculation
+        trace!("Performing ldst");
         do_ldst(
             ctx,
             !is_store,
@@ -340,6 +348,7 @@ pub fn disas_ldst_reg<R: HostStorage>(
     ctx: &mut Arm64GuestContext<R>,
     insn: InsnType,
 ) -> Result<(), DisasException> {
+    trace!("ldst_reg");
     let rt = extract(insn, 0, 5) as usize;
     let opc = extract(insn, 22, 2);
     let is_vector = extract(insn, 26, 1) == 1;

@@ -1,5 +1,7 @@
 use super::*;
 
+use log::*;
+
 impl<R: HostStorage> Op<R> {
     pub fn push_load(
         ctx: &mut impl DisasContext<R>,
@@ -55,6 +57,7 @@ impl<R: HostStorage> Op<R> {
         c2: &Rc<KHVal<R>>,
         cc: CondOp,
     ) {
+        trace!("push_movc");
         let cc = ctx.alloc_u64(cc.bits());
         assert_eq!(c1.ty, c2.ty);
         assert_eq!(rd.ty, rs1.ty);
@@ -80,6 +83,7 @@ impl<R: HostStorage> Op<R> {
         c2: &Rc<KHVal<R>>,
         cc: CondOp,
     ) {
+        trace!("push_brc");
         let cc = ctx.alloc_u64(cc.bits());
         assert_eq!(c1.ty, c2.ty);
         assert_eq!(dest.ty, ValueType::Label);
@@ -98,6 +102,7 @@ impl<R: HostStorage> Op<R> {
         hi: &Rc<KHVal<R>>,
         arg: &Rc<KHVal<R>>,
     ) {
+        trace!("push_extr");
         Op::push_extrl(ctx, lo, arg);
         Op::push_extrh(ctx, hi, arg);
     }
@@ -109,6 +114,7 @@ impl<R: HostStorage> Op<R> {
         ofs: u64,
         len: u64,
     ) {
+        trace!("push_extru");
         let ofs = ctx.alloc_u64(ofs);
         let len = ctx.alloc_u64(len);
         Op::_push_extru(ctx, rd, rs, &ofs, &len);
@@ -121,6 +127,7 @@ impl<R: HostStorage> Op<R> {
         ofs: u64,
         len: u64,
     ) {
+        trace!("push_extrs");
         let ofs = ctx.alloc_u64(ofs);
         let len = ctx.alloc_u64(len);
         Op::_push_extrs(ctx, rd, rs, &ofs, &len);
@@ -134,6 +141,7 @@ impl<R: HostStorage> Op<R> {
         ofs: u64,
         len: u64,
     ) {
+        trace!("push_depos");
         let ofs = ctx.alloc_u64(ofs);
         let len = ctx.alloc_u64(len);
         Op::_push_depos(ctx, rd, rs1, rs2, &ofs, &len);
@@ -141,6 +149,7 @@ impl<R: HostStorage> Op<R> {
 
     pub fn push_mov(ctx: &mut impl DisasContext<R>, rd: &Rc<KHVal<R>>, rs: &Rc<KHVal<R>>) {
         assert_eq!(rd.ty, rs.ty);
+        trace!("push_mov");
         match rd.ty {
             ValueType::U64 => Op::_push_mov(ctx, rd, rs),
             ValueType::U32 => Op::_push_movw(ctx, rd, rs),
@@ -150,6 +159,7 @@ impl<R: HostStorage> Op<R> {
     }
 
     pub fn push_trap(ctx: &mut impl DisasContext<R>, cause: TrapOp, val: &Rc<KHVal<R>>) {
+        trace!("push_trap");
         let cause = ctx.alloc_u64(cause.bits);
         let new_val = ctx.alloc_val(val.ty);
         Op::push_mov(ctx, &new_val, val);
