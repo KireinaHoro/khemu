@@ -9,7 +9,7 @@ use std::hash::{Hash, Hasher};
 // trait for host storage assignment
 // all implementers must provide support for immediate numbers
 // a real host storage will probably support registers and memory as well
-pub trait HostStorage: Default + Display {
+pub trait HostStorage: Default + Display + PartialEq {
     type HostContext: HostContext<StorageType = Self> + 'static;
 
     fn try_as_u32(&self) -> Option<u32>;

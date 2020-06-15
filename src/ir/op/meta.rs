@@ -150,6 +150,10 @@ impl<R: HostStorage> Op<R> {
     pub fn push_mov(ctx: &mut impl DisasContext<R>, rd: &Rc<KHVal<R>>, rs: &Rc<KHVal<R>>) {
         assert_eq!(rd.ty, rs.ty);
         trace!("push_mov");
+        if rd.storage == rs.storage {
+            trace!("rd == rs, do nothing");
+            return;
+        }
         match rd.ty {
             ValueType::U64 => Op::_push_mov(ctx, rd, rs),
             ValueType::U32 => Op::_push_movw(ctx, rd, rs),

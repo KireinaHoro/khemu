@@ -4,7 +4,7 @@ use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::targets::{InitializationConfig, Target};
 use inkwell::types::FunctionType;
-use inkwell::values::{FloatValue, GlobalValue, IntValue};
+use inkwell::values::{BasicValue, FloatValue, GlobalValue, IntValue};
 use inkwell::{AddressSpace, OptimizationLevel};
 
 use std::collections::BTreeMap;
@@ -16,6 +16,7 @@ use crate::host::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
+use inkwell::support::LLVMString;
 
 type GuestFunc = unsafe extern "C" fn() -> u64;
 
@@ -27,6 +28,7 @@ pub struct LLVMHostContext<'ctx> {
     fn_type: Option<FunctionType<'ctx>>,
 }
 
+#[derive(Clone, PartialEq)]
 pub enum LLVMHostStorage<'ctx> {
     Empty,
     Global(GlobalValue<'ctx>),
