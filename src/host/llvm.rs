@@ -216,25 +216,29 @@ impl HostContext for LLVMHostContext<'static> {
     }
 
     fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType {
-        let global = match ty {
-            ValueType::U32 => self.module.add_global(
-                self.context.i32_type(),
-                Some(AddressSpace::Const),
-                name.as_ref(),
-            ),
-            ValueType::U64 => self.module.add_global(
-                self.context.i64_type(),
-                Some(AddressSpace::Const),
-                name.as_ref(),
-            ),
-            ValueType::F64 => self.module.add_global(
-                self.context.f64_type(),
-                Some(AddressSpace::Const),
-                name.as_ref(),
-            ),
+        LLVMHostStorage::Global(match ty {
+            ValueType::U32 => {
+                let g = self
+                    .module
+                    .add_global(self.context.i32_type(), None, name.as_ref());
+                g.set_initializer(&self.context.i32_type().const_int(0, false));
+                g
+            }
+            ValueType::U64 => {
+                let g = self
+                    .module
+                    .add_global(self.context.i64_type(), None, name.as_ref());
+                g.set_initializer(&self.context.i64_type().const_int(0, false));
+                g
+            }
+            ValueType::F64 => {
+                let g = self
+                    .module
+                    .add_global(self.context.f64_type(), None, name.as_ref());
+                g.set_initializer(&self.context.f64_type().const_float(0f64));
+                g
+            }
             _ => unreachable!(),
-        };
-
-        LLVMHostStorage::Global(global)
+        })
     }
 }
