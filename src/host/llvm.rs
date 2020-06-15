@@ -90,7 +90,47 @@ impl HostBlock for JitFunction<'_, GuestFunc> {
 
 static mut LLVM_CTX: Option<LLVMHostContext> = None;
 
-impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {}
+type Reg = Rc<KHVal<LLVMHostStorage<'static>>>;
+
+impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
+    fn gen_mov(&mut self, rd: Reg, rs1: Reg) {
+        if let LLVMHostStorage::Empty = *rs1.storage.borrow() {
+            panic!("trying to mov from empty value")
+        }
+        let mut rd_storage = rd.storage.borrow_mut();
+        match *rd_storage {
+            LLVMHostStorage::Empty => {
+                // empty destination: SSA new value
+                match &*rs1.storage.borrow() {
+                    LLVMHostStorage::Global(v) => {
+                        // build load
+                        *rd_storage = LLVMHostStorage::IntV(
+                            self.builder
+                                .build_load(v.as_pointer_value(), v.get_name().to_str().unwrap())
+                                .into_int_value(),
+                        );
+                    }
+                    s => {
+                        *rd_storage = s.clone();
+                    }
+                }
+            }
+            LLVMHostStorage::Global(v) => {
+                let val = match &*rs1.storage.borrow() {
+                    LLVMHostStorage::Global(v) => {
+                        self.builder
+                            .build_load(v.as_pointer_value(), v.get_name().to_str().unwrap())
+                            .into_int_value()
+                    }
+                    LLVMHostStorage::IntV(v) => *v,
+                    _ => unimplemented!(),
+                };
+                self.builder.build_store(v.as_pointer_value(), val);
+            }
+            _ => panic!("ssa violation: trying to mov to initialized value"),
+        }
+    }
+}
 
 impl HostContext for LLVMHostContext<'static> {
     type StorageType = LLVMHostStorage<'static>;
