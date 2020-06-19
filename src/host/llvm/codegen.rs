@@ -50,4 +50,39 @@ impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
             .build_right_shift(chop_high, right_shift, true, "");
         store_result!(self, rd, result);
     }
+
+    fn gen_load(&mut self, rd: Reg, rs1: Reg, rs2: Reg) {
+        let i64_type = self.i64_type.unwrap();
+
+        let rs1 = read_value!(self, rs1);
+        let mem_op = rs2.storage.borrow().try_as_u64().unwrap();
+        let mem_op = MemOp::from_bits(mem_op).unwrap();
+        let size: u64 = mem_op.get_size();
+        let sign: bool = mem_op.get_sign();
+
+        // calculate real address = offset + guest
+        let offset = self.guest_vm.borrow().as_ptr() as u64;
+        let offset = i64_type.const_int(offset, false);
+        let addr = self.builder.build_int_add(rs1, offset, "");
+
+        let ptr_type = match size {
+            1 => self.context.i8_type(),
+            2 => self.context.i16_type(),
+            4 => self.context.i32_type(),
+            8 => self.context.i64_type(),
+            _ => unreachable!(),
+        }
+        .ptr_type(AddressSpace::Generic);
+
+        let addr_ptr = self.builder.build_int_to_ptr(addr, ptr_type, "");
+        let word = self.builder.build_load(addr_ptr, "").into_int_value();
+
+        let result = if sign {
+            self.builder.build_int_s_extend(word, i64_type, "")
+        } else {
+            self.builder.build_int_z_extend(word, i64_type, "")
+        };
+
+        store_result!(self, rd, result);
+    }
 }

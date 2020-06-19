@@ -154,4 +154,18 @@ impl MemOp {
             Self::UNSIGNED
         }
     }
+
+    pub fn get_size(&self) -> u64 {
+        match *self & Self::SIZE_MASK {
+            Self::SIZE_8 => 1,
+            Self::SIZE_16 => 2,
+            Self::SIZE_32 => 4,
+            Self::SIZE_64 => 8,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_sign(&self) -> bool {
+        (*self & Self::SIGN_EXTEND).bits != 0
+    }
 }
