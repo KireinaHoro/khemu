@@ -85,4 +85,12 @@ impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
 
         store_result!(self, rd, result);
     }
+
+    fn gen_add(&mut self, rd: Reg, rs1: Reg, rs2: Reg) {
+        let rs1 = read_value!(self, rs1);
+        let rs2 = read_value!(self, rs2);
+
+        let result = self.builder.build_int_add(rs1, rs2, "");
+        store_result!(self, rd, result);
+    }
 }
