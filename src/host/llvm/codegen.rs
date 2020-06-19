@@ -13,7 +13,7 @@ macro_rules! read_value {
             LLVMHostStorage::IntV(v) => v,
             _ => panic!("not implemented"),
         }
-    }
+    };
 }
 
 macro_rules! store_result {

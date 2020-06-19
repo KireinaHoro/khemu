@@ -160,27 +160,12 @@ impl HostContext for LLVMHostContext<'static> {
                     .void_type()
                     .fn_type(&[], false),
             );
-            LLVM_CTX.as_mut().unwrap().i32_type = Some(
-                LLVM_CTX
-                    .as_mut()
-                    .unwrap()
-                    .context
-                    .i32_type(),
-            );
-            LLVM_CTX.as_mut().unwrap().i64_type = Some(
-                LLVM_CTX
-                    .as_mut()
-                    .unwrap()
-                    .context
-                    .i64_type(),
-            );
-            LLVM_CTX.as_mut().unwrap().f64_type = Some(
-                LLVM_CTX
-                    .as_mut()
-                    .unwrap()
-                    .context
-                    .f64_type(),
-            );
+            LLVM_CTX.as_mut().unwrap().i32_type =
+                Some(LLVM_CTX.as_mut().unwrap().context.i32_type());
+            LLVM_CTX.as_mut().unwrap().i64_type =
+                Some(LLVM_CTX.as_mut().unwrap().context.i64_type());
+            LLVM_CTX.as_mut().unwrap().f64_type =
+                Some(LLVM_CTX.as_mut().unwrap().context.f64_type());
         }
     }
 
