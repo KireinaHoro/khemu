@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 pub fn load_program<R: HostStorage>(
     buffer: Vec<u8>,
-    handler: impl FnMut(u64, u64),
+    handler: Box<dyn FnMut(u64, u64)>,
 ) -> Result<(impl Disassembler<R>, u64), String> {
     let binary: elf::Elf = match elf::Elf::parse(&buffer) {
         Ok(b) => b,

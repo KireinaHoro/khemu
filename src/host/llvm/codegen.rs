@@ -2,6 +2,20 @@ use super::*;
 
 type Reg = Rc<KHVal<LLVMHostStorage<'static>>>;
 
+macro_rules! read_value {
+    ($self:expr, $rs:expr) => {
+        match *$rs.storage.borrow() {
+            LLVMHostStorage::Empty => panic!("trying to use empty value"),
+            LLVMHostStorage::Global(v) => $self
+                .builder
+                .build_load(v.as_pointer_value(), "")
+                .into_int_value(),
+            LLVMHostStorage::IntV(v) => v,
+            _ => panic!("not implemented"),
+        }
+    }
+}
+
 macro_rules! store_result {
     ($self:expr, $rd:expr, $result:expr) => {
         let mut rd_storage = $rd.storage.borrow_mut();
@@ -17,29 +31,13 @@ macro_rules! store_result {
 
 impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
     fn gen_mov(&mut self, rd: Reg, rs1: Reg) {
-        if let LLVMHostStorage::Empty = *rs1.storage.borrow() {}
-        let result = match *rs1.storage.borrow() {
-            LLVMHostStorage::Global(v) => self
-                .builder
-                .build_load(v.as_pointer_value(), "")
-                .into_int_value(),
-            LLVMHostStorage::IntV(v) => v,
-            _ => panic!("not implemented"),
-        };
+        let result = read_value!(self, rs1);
         store_result!(self, rd, result);
     }
 
     fn gen_extrs(&mut self, rd: Reg, rs: Reg, ofs: Reg, len: Reg) {
-        let i64_type = self.context.i64_type();
-        let rs = match *rs.storage.borrow() {
-            LLVMHostStorage::Empty => panic!("rs == Empty"),
-            LLVMHostStorage::Global(v) => self
-                .builder
-                .build_load(v.as_pointer_value(), "")
-                .into_int_value(),
-            LLVMHostStorage::IntV(v) => v,
-            _ => unimplemented!(),
-        };
+        let i64_type = self.i64_type.unwrap();
+        let rs = read_value!(self, rs);
 
         let ofs = ofs.storage.borrow().try_as_u64().unwrap();
         let len = len.storage.borrow().try_as_u64().unwrap();

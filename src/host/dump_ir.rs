@@ -93,7 +93,7 @@ impl HostContext for DumpIRHostContext {
         ret
     }
 
-    fn init(_: GuestMap, handler: impl FnMut(u64, u64)) {
+    fn init(_: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
         unsafe {
             DUMP_IR_CTX = Some(Self {});
         }

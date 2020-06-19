@@ -3,20 +3,20 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::targets::{InitializationConfig, Target};
-use inkwell::types::FunctionType;
+use inkwell::types::{FunctionType, IntType, FloatType};
 use inkwell::values::{BasicValue, FloatValue, GlobalValue, IntValue};
 use inkwell::{AddressSpace, OptimizationLevel};
 
 use std::collections::BTreeMap;
 use std::fmt::{Display, Error, Formatter};
 use std::rc::{Rc, Weak};
+use log::*;
 
 use crate::guest::*;
 use crate::host::*;
 use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
-use inkwell::support::LLVMString;
 
 type GuestFunc = unsafe extern "C" fn() -> u64;
 
@@ -26,6 +26,12 @@ pub struct LLVMHostContext<'ctx> {
     builder: Builder<'ctx>,
     execution_engine: ExecutionEngine<'ctx>,
     fn_type: Option<FunctionType<'ctx>>,
+    i32_type: Option<IntType<'ctx>>,
+    i64_type: Option<IntType<'ctx>>,
+    f64_type: Option<FloatType<'ctx>>,
+    // TODO(jsteward): implement virtual address space and remove guestmap
+    guest_map: GuestMap,
+    handler: Box<dyn FnMut(u64, u64)>,
 }
 
 #[derive(PartialEq)]
@@ -114,7 +120,7 @@ impl HostContext for LLVMHostContext<'static> {
 
         // consume TB
         for op in tb.ops.into_iter() {
-            println!("{}", op);
+            debug!("Emitting {}", op);
             self.dispatch(op);
         }
 
@@ -123,7 +129,7 @@ impl HostContext for LLVMHostContext<'static> {
         unsafe { self.execution_engine.get_function(name.as_str()).unwrap() }
     }
 
-    fn init(guest_map: GuestMap, handler: impl FnMut(u64, u64)) {
+    fn init(guest_map: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
         // FIXME(jsteward): there should be a better way to do this (without leaking)
         let context = Box::new(Context::create());
         let context = Box::leak(context);
@@ -140,6 +146,12 @@ impl HostContext for LLVMHostContext<'static> {
                 builder: context.create_builder(),
                 execution_engine,
                 fn_type: None,
+                i32_type: None,
+                i64_type: None,
+                f64_type: None,
+
+                guest_map,
+                handler,
             });
 
             LLVM_CTX.as_mut().unwrap().fn_type = Some(
@@ -149,6 +161,27 @@ impl HostContext for LLVMHostContext<'static> {
                     .context
                     .void_type()
                     .fn_type(&[], false),
+            );
+            LLVM_CTX.as_mut().unwrap().i32_type = Some(
+                LLVM_CTX
+                    .as_mut()
+                    .unwrap()
+                    .context
+                    .i32_type(),
+            );
+            LLVM_CTX.as_mut().unwrap().i64_type = Some(
+                LLVM_CTX
+                    .as_mut()
+                    .unwrap()
+                    .context
+                    .i64_type(),
+            );
+            LLVM_CTX.as_mut().unwrap().f64_type = Some(
+                LLVM_CTX
+                    .as_mut()
+                    .unwrap()
+                    .context
+                    .f64_type(),
             );
         }
     }
@@ -166,9 +199,7 @@ impl HostContext for LLVMHostContext<'static> {
     }
 
     fn make_u64(&self, v: u64) -> Self::StorageType {
-        let ty = self.context.i64_type();
-
-        LLVMHostStorage::IntV(ty.const_int(v, false))
+        LLVMHostStorage::IntV(self.i64_type.unwrap().const_int(v, false))
     }
 
     fn make_f64(&self, v: f64) -> Self::StorageType {
@@ -180,22 +211,22 @@ impl HostContext for LLVMHostContext<'static> {
             ValueType::U32 => {
                 let g = self
                     .module
-                    .add_global(self.context.i32_type(), None, name.as_ref());
-                g.set_initializer(&self.context.i32_type().const_int(0, false));
+                    .add_global(self.i32_type.unwrap(), None, name.as_ref());
+                g.set_initializer(&self.i32_type.unwrap().const_int(0, false));
                 g
             }
             ValueType::U64 => {
                 let g = self
                     .module
-                    .add_global(self.context.i64_type(), None, name.as_ref());
-                g.set_initializer(&self.context.i64_type().const_int(0, false));
+                    .add_global(self.i64_type.unwrap(), None, name.as_ref());
+                g.set_initializer(&self.i64_type.unwrap().const_int(0, false));
                 g
             }
             ValueType::F64 => {
                 let g = self
                     .module
-                    .add_global(self.context.f64_type(), None, name.as_ref());
-                g.set_initializer(&self.context.f64_type().const_float(0f64));
+                    .add_global(self.f64_type.unwrap(), None, name.as_ref());
+                g.set_initializer(&self.f64_type.unwrap().const_float(0f64));
                 g
             }
             _ => unreachable!(),

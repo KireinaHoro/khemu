@@ -62,9 +62,9 @@ pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
 
     // trap handler
     // TODO(jsteward) lookup new start_positions when LOOKUP_TB is requested
-    let handler = |cause, val| {
+    let handler = Box::new(|cause, val| {
         warn!("Trap: cause={:#x} val={:#x}", cause, val);
-    };
+    });
 
     let (mut disassembler, entry_point) = loader::load_program(elf, handler)?;
     let mut start_positions = VecDeque::new();
