@@ -13,7 +13,7 @@ pub type InsnType = u32;
 
 // disassembly facility
 pub struct Arm64GuestContext<R: HostStorage> {
-    map: GuestMap,            // memory map for guest
+    map: GuestMap,
     disas_pos: Option<usize>, // addr for next instruction to be disassembled
     // 32 general-purpose registers
     xreg: Vec<Rc<KHVal<R>>>,
@@ -76,18 +76,10 @@ impl<R: HostStorage> Arm64GuestContext<R> {
 
     fn next_insn(&mut self) -> InsnType {
         let addr = self.disas_pos.unwrap();
-        let (k, v) = self.map.get_region(addr);
-        let offset = addr - k;
-        if offset >= v.len() {
-            panic!("address {:#x} out of range", addr);
-        } else {
-            let ret: &[u8] = &v[offset..offset + 4];
-            // normal aarch64 (not Thumb) has 4-byte instructions
-            self.disas_pos = Some(addr + 4);
-            ret.iter()
-                .enumerate()
-                .fold(0, |c, (i, &v)| c | ((v as InsnType) << (i * 8)))
-        }
+        let insn_u8 = self.map.borrow().index(addr..addr + 4).try_into().unwrap();
+        self.disas_pos = Some(addr + 4);
+
+        u32::from_le_bytes(insn_u8)
     }
 
     pub fn reg(&mut self, r: usize) -> Rc<KHVal<R>> {
@@ -229,10 +221,6 @@ impl<R: HostStorage> Disassembler<R> for Arm64GuestContext<R> {
         ret
     }
 
-    fn get_guest_map(&self) -> GuestMap {
-        Rc::clone(&self.map)
-    }
-
     fn get_tracking(&self) -> &[Weak<KHVal<R>>] {
         self.tracking.as_slice()
     }
@@ -330,6 +318,10 @@ disas_subcategory!(ldst, 24, 6,
 );
 
 use data_proc_simd_fp::disas_data_proc_simd_fp;
+use memmap::{Mmap, MmapMut};
+use std::cell::RefCell;
+use std::convert::TryInto;
+use std::ops::Index;
 
 #[rustfmt::skip]
 disas_subcategory!(b_exc_sys, 25, 7,

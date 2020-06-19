@@ -23,7 +23,7 @@ pub trait HostContext {
         exception: Option<DisasException>,
     ) -> Self::BlockType;
 
-    fn init(guest_map: GuestMap, handler: Box<dyn FnMut(u64, u64)>);
+    fn init(guest_vm: GuestMap, handler: Box<dyn FnMut(u64, u64)>);
     fn get() -> &'static mut Self;
 
     // value creators

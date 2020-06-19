@@ -3,7 +3,6 @@ pub mod arm64;
 use crate::host::HostContext;
 use crate::ir::op::Op;
 use crate::ir::storage::*;
-use crate::runtime::GuestMap;
 use bitflags::_core::fmt::{Error, Formatter};
 use std::fmt::Display;
 use std::rc::{Rc, Weak};
@@ -58,9 +57,6 @@ pub trait Disassembler<R: HostStorage> {
 
     // get the newly-generated TB
     fn get_tb(&mut self) -> TranslationBlock<R>;
-
-    // get memory map for execution use
-    fn get_guest_map(&self) -> GuestMap;
 
     // get tracking weak pointers of allocated KHVals
     fn get_tracking(&self) -> &[Weak<KHVal<R>>];

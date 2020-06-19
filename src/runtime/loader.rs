@@ -9,6 +9,9 @@ use goblin::elf::header::*;
 use goblin::elf::program_header::pt_to_str;
 use std::rc::Rc;
 
+use std::cell::RefCell;
+use std::ops::IndexMut;
+
 pub fn load_program<R: HostStorage>(
     buffer: Vec<u8>,
     handler: Box<dyn FnMut(u64, u64)>,
@@ -31,33 +34,40 @@ pub fn load_program<R: HostStorage>(
                 return Err("dynamically linked executable not supported yet".to_owned());
             }
 
-            let mut map: GuestMap = GuestMapMethods::new();
+            // mmap for guest virtual
+            let guest_map = map_virtual()?;
+            info!(
+                "Created guest address space at {:#x}",
+                guest_map.as_ptr() as usize
+            );
+
             for ph in &binary.program_headers {
                 if ph.p_type == elf::program_header::PT_LOAD {
+                    let len = ph.p_filesz as usize;
+                    let file_off = ph.p_offset as usize;
+                    let virt = ph.p_vaddr as usize;
+
                     info!(
                         "{}: reading {:#x} bytes for {:#x}",
                         pt_to_str(ph.p_type),
-                        ph.p_memsz,
-                        ph.p_vaddr
+                        len,
+                        virt
                     );
-                    let data = &buffer[ph.p_offset as usize..(ph.p_offset + ph.p_filesz) as usize];
-                    let f;
-                    if ph.is_write() || ph.p_memsz > ph.p_filesz {
-                        let mut copied = vec![0u8; ph.p_memsz as usize];
-                        copied[..ph.p_filesz as usize].copy_from_slice(&data);
-                        f = copied;
-                    } else {
-                        f = data.to_owned();
-                    }
-                    map.borrow_mut().insert(ph.p_vaddr as usize, f);
+
+                    // memsz may be larger than filesz, in which case the rest is zero-filled
+                    let data = &buffer[file_off..file_off + len];
+                    guest_map
+                        .borrow_mut()
+                        .index_mut(virt..virt + len)
+                        .copy_from_slice(data);
                 }
             }
 
             info!("Entry point: {:#x}", binary.entry);
 
-            R::HostContext::init(Rc::clone(&map), handler);
+            R::HostContext::init(Rc::clone(&guest_map), handler);
 
-            Ok((Arm64GuestContext::<R>::new(map), binary.entry))
+            Ok((Arm64GuestContext::<R>::new(guest_map), binary.entry))
         }
         _ => Err(format!(
             "unsupported architecture {}",

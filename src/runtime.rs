@@ -2,44 +2,17 @@ extern crate log;
 
 use crate::guest::*;
 use crate::host::{HostBlock, HostContext};
-use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::path::Path;
-use std::{env, fs};
 
 use log::*;
+use memmap::{MmapMut, MmapOptions};
+
 use std::cell::{Ref, RefCell};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::path::Path;
 use std::rc::Rc;
+use std::{env, fs};
 
 pub const DEFAULT_TB_SIZE: usize = 4096;
-
-pub type GuestMap = Rc<RefCell<BTreeMap<usize, Vec<u8>>>>;
-
-pub trait GuestMapMethods: Sized {
-    fn new() -> Self;
-    fn get_region(&self, loc: usize) -> (usize, Ref<Vec<u8>>);
-}
-impl GuestMapMethods for GuestMap {
-    fn new() -> Self {
-        Rc::new(RefCell::new(BTreeMap::new()))
-    }
-    fn get_region(&self, loc: usize) -> (usize, Ref<Vec<u8>>) {
-        let mut start = 0;
-        let ret = Ref::map(self.borrow(), |map| {
-            let kv = map.range(..=loc).next_back();
-            if let Some((&k, v)) = kv {
-                if k + v.len() > loc {
-                    start = k;
-                    return v;
-                } else {
-                    panic!("unmapped guest address {}", loc);
-                }
-            } else {
-                panic!("unmapped guest address {}", loc);
-            }
-        });
-        (start, ret)
-    }
-}
 
 pub fn read_elf() -> Result<Vec<u8>, String> {
     let args: Vec<_> = env::args().collect();
@@ -53,6 +26,20 @@ pub fn read_elf() -> Result<Vec<u8>, String> {
         Ok(b) => Ok(b),
         Err(e) => Err(format!("failed to read {}: {}", prog_path.display(), e)),
     }
+}
+
+// 2GB guest virtual space
+const GUEST_SIZE: usize = 0x2000_0000;
+
+pub type GuestMap = Rc<RefCell<MmapMut>>;
+
+// returns the base of map
+pub fn map_virtual() -> Result<GuestMap, String> {
+    MmapOptions::new()
+        .len(GUEST_SIZE)
+        .map_anon()
+        .map(|x| Rc::new(RefCell::new(x)))
+        .map_err(|e| format!("failed to map guest virtual space: {}", e))
 }
 
 pub mod loader;

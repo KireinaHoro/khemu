@@ -3,14 +3,14 @@ use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::module::Module;
 use inkwell::targets::{InitializationConfig, Target};
-use inkwell::types::{FunctionType, IntType, FloatType};
+use inkwell::types::{FloatType, FunctionType, IntType};
 use inkwell::values::{BasicValue, FloatValue, GlobalValue, IntValue};
 use inkwell::{AddressSpace, OptimizationLevel};
 
+use log::*;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Error, Formatter};
 use std::rc::{Rc, Weak};
-use log::*;
 
 use crate::guest::*;
 use crate::host::*;
@@ -29,8 +29,7 @@ pub struct LLVMHostContext<'ctx> {
     i32_type: Option<IntType<'ctx>>,
     i64_type: Option<IntType<'ctx>>,
     f64_type: Option<FloatType<'ctx>>,
-    // TODO(jsteward): implement virtual address space and remove guestmap
-    guest_map: GuestMap,
+    guest_vm: GuestMap,
     handler: Box<dyn FnMut(u64, u64)>,
 }
 
@@ -129,7 +128,7 @@ impl HostContext for LLVMHostContext<'static> {
         unsafe { self.execution_engine.get_function(name.as_str()).unwrap() }
     }
 
-    fn init(guest_map: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
+    fn init(guest_vm: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
         // FIXME(jsteward): there should be a better way to do this (without leaking)
         let context = Box::new(Context::create());
         let context = Box::leak(context);
@@ -149,8 +148,7 @@ impl HostContext for LLVMHostContext<'static> {
                 i32_type: None,
                 i64_type: None,
                 f64_type: None,
-
-                guest_map,
+                guest_vm,
                 handler,
             });
 
