@@ -18,7 +18,7 @@ use crate::ir::op::*;
 use crate::ir::storage::*;
 use crate::runtime::*;
 
-type GuestFunc = unsafe extern "C" fn() -> u64;
+type GuestFunc = unsafe extern "C" fn();
 
 pub struct LLVMHostContext<'ctx> {
     context: &'ctx Context,
@@ -29,8 +29,9 @@ pub struct LLVMHostContext<'ctx> {
     i32_type: Option<IntType<'ctx>>,
     i64_type: Option<IntType<'ctx>>,
     f64_type: Option<FloatType<'ctx>>,
+    handler_type: Option<FunctionType<'ctx>>,
     guest_vm: GuestMap,
-    handler: Box<dyn FnMut(u64, u64)>,
+    handler: TrapHandler,
 }
 
 #[derive(PartialEq)]
@@ -88,8 +89,8 @@ impl HostStorage for LLVMHostStorage<'static> {
 }
 
 impl HostBlock for JitFunction<'_, GuestFunc> {
-    fn execute(&self) {
-        unimplemented!()
+    unsafe fn execute(&self) {
+        self.call()
     }
 }
 
@@ -123,12 +124,18 @@ impl HostContext for LLVMHostContext<'static> {
             self.dispatch(op);
         }
 
-        // TODO(jsteward) generate context store
+        // TODO(jsteward) generate context store:
+        // TODO(jsteward) check for guest registers, if not global, store to global
+
+        // end block, insert return
+        self.builder.build_return(None);
+
+        self.module.print_to_stderr();
 
         unsafe { self.execution_engine.get_function(name.as_str()).unwrap() }
     }
 
-    fn init(guest_vm: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
+    fn init(guest_vm: GuestMap, handler: TrapHandler) {
         // FIXME(jsteward): there should be a better way to do this (without leaking)
         let context = Box::new(Context::create());
         let context = Box::leak(context);
@@ -148,6 +155,7 @@ impl HostContext for LLVMHostContext<'static> {
                 i32_type: None,
                 i64_type: None,
                 f64_type: None,
+                handler_type: None,
                 guest_vm,
                 handler,
             });
@@ -160,12 +168,24 @@ impl HostContext for LLVMHostContext<'static> {
                     .void_type()
                     .fn_type(&[], false),
             );
+
             LLVM_CTX.as_mut().unwrap().i32_type =
                 Some(LLVM_CTX.as_mut().unwrap().context.i32_type());
             LLVM_CTX.as_mut().unwrap().i64_type =
                 Some(LLVM_CTX.as_mut().unwrap().context.i64_type());
+
+            let i64_type = LLVM_CTX.as_mut().unwrap().i64_type.unwrap();
+
             LLVM_CTX.as_mut().unwrap().f64_type =
                 Some(LLVM_CTX.as_mut().unwrap().context.f64_type());
+            LLVM_CTX.as_mut().unwrap().handler_type = Some(
+                LLVM_CTX
+                    .as_mut()
+                    .unwrap()
+                    .context
+                    .void_type()
+                    .fn_type(&[i64_type.into(), i64_type.into()], false),
+            );
         }
     }
 

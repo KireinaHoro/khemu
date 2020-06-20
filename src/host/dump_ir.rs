@@ -3,7 +3,7 @@
 use crate::guest::{DisasException, TranslationBlock};
 use crate::host::*;
 use crate::ir::storage::*;
-use crate::runtime::GuestMap;
+use crate::runtime::{GuestMap, TrapHandler};
 use std::fmt::{Display, Error, Formatter};
 use std::rc::Weak;
 
@@ -69,7 +69,7 @@ impl HostStorage for DumpIRHostStorage {
 }
 
 impl HostBlock for String {
-    fn execute(&self) {
+    unsafe fn execute(&self) {
         print!("{}", self);
     }
 }
@@ -93,7 +93,7 @@ impl HostContext for DumpIRHostContext {
         ret
     }
 
-    fn init(_: GuestMap, handler: Box<dyn FnMut(u64, u64)>) {
+    fn init(_: GuestMap, _: TrapHandler) {
         unsafe {
             DUMP_IR_CTX = Some(Self {});
         }

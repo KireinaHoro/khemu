@@ -14,7 +14,7 @@ use std::ops::IndexMut;
 
 pub fn load_program<R: HostStorage>(
     buffer: Vec<u8>,
-    handler: Box<dyn FnMut(u64, u64)>,
+    handler: TrapHandler,
 ) -> Result<(impl Disassembler<R>, u64), String> {
     let binary: elf::Elf = match elf::Elf::parse(&buffer) {
         Ok(b) => b,

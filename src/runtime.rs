@@ -2,6 +2,7 @@ extern crate log;
 
 use crate::guest::*;
 use crate::host::{HostBlock, HostContext};
+use crate::ir::op::TrapOp;
 
 use log::*;
 use memmap::{MmapMut, MmapOptions};
@@ -44,16 +45,17 @@ pub fn map_virtual() -> Result<GuestMap, String> {
 
 pub mod loader;
 
+pub type TrapHandler = fn(u64, u64);
+
+fn trap_handler(cause: u64, val: u64) {
+    let trap_op = TrapOp::from_bits(cause).unwrap();
+    warn!("Trap: cause={} val={:#x}", trap_op, val);
+}
+
 pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
     let elf = read_elf()?;
 
-    // trap handler
-    // TODO(jsteward) lookup new start_positions when LOOKUP_TB is requested
-    let handler = Box::new(|cause, val| {
-        warn!("Trap: cause={:#x} val={:#x}", cause, val);
-    });
-
-    let (mut disassembler, entry_point) = loader::load_program(elf, handler)?;
+    let (mut disassembler, entry_point) = loader::load_program(elf, trap_handler)?;
     let mut start_positions = VecDeque::new();
     let mut blk_cache: HashMap<_, C::BlockType> = HashMap::new();
 
@@ -65,7 +67,9 @@ pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
             // found block, execute
             Some(blk) => {
                 info!("Executing host block for guest {:#x}", start_pos);
-                blk.execute();
+                unsafe {
+                    blk.execute();
+                }
                 start_positions.pop_front();
             }
             // not found, translate and insert

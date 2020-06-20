@@ -1,6 +1,6 @@
 use super::ir::storage::*;
 use crate::guest::{DisasException, TranslationBlock};
-use crate::runtime::GuestMap;
+use crate::runtime::{GuestMap, TrapHandler};
 use std::rc::Weak;
 
 pub mod dump_ir;
@@ -8,7 +8,7 @@ pub mod llvm;
 
 pub trait HostBlock {
     // run from start of block
-    fn execute(&self);
+    unsafe fn execute(&self);
 }
 
 pub trait HostContext {
@@ -23,7 +23,7 @@ pub trait HostContext {
         exception: Option<DisasException>,
     ) -> Self::BlockType;
 
-    fn init(guest_vm: GuestMap, handler: Box<dyn FnMut(u64, u64)>);
+    fn init(guest_vm: GuestMap, handler: TrapHandler);
     fn get() -> &'static mut Self;
 
     // value creators

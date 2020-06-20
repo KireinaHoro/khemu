@@ -93,4 +93,19 @@ impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
         let result = self.builder.build_int_add(rs1, rs2, "");
         store_result!(self, rd, result);
     }
+
+    fn gen_trap(&mut self, cause: Reg, val: Reg) {
+        let cause = read_value!(self, cause);
+        let val = read_value!(self, val);
+
+        let i64_type = self.i64_type.unwrap();
+        let handler_type = self.handler_type.unwrap();
+        let handler_ptr_type = handler_type.ptr_type(AddressSpace::Generic);
+        let handler = i64_type
+            .const_int(self.handler as u64, false)
+            .const_to_pointer(handler_ptr_type);
+
+        self.builder
+            .build_call(handler, &[cause.into(), val.into()], "");
+    }
 }

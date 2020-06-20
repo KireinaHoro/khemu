@@ -1,6 +1,7 @@
 use crate::guest::DisasContext;
 use crate::ir::storage::{HostStorage, KHVal, MemOp, ValueType};
 use macros::gen_ops;
+use std::fmt::{Display, Error, Formatter};
 use std::rc::Rc;
 
 #[rustfmt::skip]
@@ -88,6 +89,20 @@ bitflags! {
         const UNDEF_OPCODE = 1;
         const ACCESS_FAULT = 2;
         const SYSCALL = 3;
+    }
+}
+
+impl Display for TrapOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        let s = match *self {
+            TrapOp::LOOKUP_TB => "lookup_tb",
+            TrapOp::UNDEF_OPCODE => "undef_opcode",
+            TrapOp::ACCESS_FAULT => "access_fault",
+            TrapOp::SYSCALL => "syscall",
+            _ => unreachable!(),
+        };
+
+        write!(f, "{}", s)
     }
 }
 
