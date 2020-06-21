@@ -83,6 +83,7 @@ impl HostContext for DumpIRHostContext {
     fn emit_block(
         &mut self,
         tb: TranslationBlock<Self::StorageType>,
+        _name: &str,
         _tracking: &[Weak<KHVal<Self::StorageType>>],
         _exception: Option<DisasException>,
     ) -> Self::BlockType {
@@ -101,6 +102,10 @@ impl HostContext for DumpIRHostContext {
 
     fn get() -> &'static mut Self {
         unsafe { DUMP_IR_CTX.as_mut().unwrap() }
+    }
+
+    fn push_block(&mut self, name: &str, create_func: bool) {
+        unimplemented!()
     }
 
     fn make_label(&self) -> Self::StorageType {
@@ -127,5 +132,9 @@ impl HostContext for DumpIRHostContext {
 
     fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType {
         DumpIRHostStorage::Named(name)
+    }
+
+    fn dump_reg(&mut self) {
+        unimplemented!()
     }
 }

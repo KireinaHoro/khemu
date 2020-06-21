@@ -47,15 +47,17 @@ pub mod loader;
 
 pub type TrapHandler = fn(u64, u64);
 
-fn trap_handler(cause: u64, val: u64) {
+fn trap_handler<C: HostContext + 'static>(cause: u64, val: u64) {
     let trap_op = TrapOp::from_bits(cause).unwrap();
     warn!("Trap: cause={} val={:#x}", trap_op, val);
+
+    C::get().dump_reg();
 }
 
 pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
     let elf = read_elf()?;
 
-    let (mut disassembler, entry_point) = loader::load_program(elf, trap_handler)?;
+    let (mut disassembler, entry_point) = loader::load_program(elf, trap_handler::<C>)?;
     let mut start_positions = VecDeque::new();
     let mut blk_cache: HashMap<_, C::BlockType> = HashMap::new();
 
@@ -74,6 +76,9 @@ pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
             }
             // not found, translate and insert
             None => {
+                let name = format!("func_{}", start_pos);
+                C::get().push_block(&name, true);
+
                 let result = disassembler.disas_block(start_pos, DEFAULT_TB_SIZE);
                 let tb = disassembler.get_tb();
                 match result {
@@ -112,7 +117,8 @@ pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
                         }
 
                         // emit backend instructions
-                        let blk = C::get().emit_block(tb, disassembler.get_tracking(), Some(e));
+                        let blk =
+                            C::get().emit_block(tb, &name, disassembler.get_tracking(), Some(e));
 
                         // record in cache, run it next round
                         blk_cache.insert(start_pos, blk);

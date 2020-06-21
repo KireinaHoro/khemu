@@ -19,6 +19,7 @@ pub trait HostContext {
     fn emit_block(
         &mut self,
         tb: TranslationBlock<Self::StorageType>,
+        name: &str,
         tracking: &[Weak<KHVal<Self::StorageType>>],
         exception: Option<DisasException>,
     ) -> Self::BlockType;
@@ -26,10 +27,16 @@ pub trait HostContext {
     fn init(guest_vm: GuestMap, handler: TrapHandler);
     fn get() -> &'static mut Self;
 
+    // new block for codegen
+    fn push_block(&mut self, name: &str, create_func: bool);
+
     // value creators
     fn make_label(&self) -> Self::StorageType;
     fn make_u32(&self, v: u32) -> Self::StorageType;
     fn make_u64(&self, v: u64) -> Self::StorageType;
     fn make_f64(&self, v: f64) -> Self::StorageType;
     fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType;
+
+    // register dump
+    fn dump_reg(&mut self);
 }
