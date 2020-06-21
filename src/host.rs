@@ -37,6 +37,7 @@ pub trait HostContext {
     fn make_f64(&self, v: f64) -> Self::StorageType;
     fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType;
 
-    // register dump
-    fn dump_reg(&mut self);
+    // host-specific routine for handling traps
+    // host-irrelevant parts should go into `runtime::trap_handler`
+    fn handle_trap(&mut self);
 }

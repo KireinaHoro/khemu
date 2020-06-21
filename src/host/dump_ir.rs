@@ -134,7 +134,7 @@ impl HostContext for DumpIRHostContext {
         DumpIRHostStorage::Named(name)
     }
 
-    fn dump_reg(&mut self) {
+    fn handle_trap(&mut self) {
         unimplemented!()
     }
 }

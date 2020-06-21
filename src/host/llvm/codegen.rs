@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Index;
 
 type Reg = Rc<KHVal<LLVMHostStorage<'static>>>;
 
@@ -6,10 +7,25 @@ macro_rules! read_value {
     ($self:expr, $rs:expr) => {
         match *$rs.storage.borrow() {
             LLVMHostStorage::Empty => panic!("trying to use empty value"),
-            LLVMHostStorage::Global(v) => $self
-                .builder
-                .build_load(v.as_pointer_value(), "")
-                .into_int_value(),
+            LLVMHostStorage::Global(v) => {
+                // check if value has previously been read
+                match $self
+                    .global_map
+                    .borrow_mut()
+                    .get_mut(&v)
+                    .expect("untracked global")
+                {
+                    Some(cv) => *cv,
+                    o @ None => {
+                        let temp = $self
+                            .builder
+                            .build_load(v.as_pointer_value(), "")
+                            .into_int_value();
+                        *o = Some(temp);
+                        temp
+                    }
+                }
+            }
             LLVMHostStorage::IntV(v) => v,
             _ => panic!("not implemented"),
         }
@@ -22,7 +38,12 @@ macro_rules! store_result {
         match *rd_storage {
             LLVMHostStorage::Empty => *rd_storage = LLVMHostStorage::IntV($result),
             LLVMHostStorage::Global(v) => {
-                $self.builder.build_store(v.as_pointer_value(), $result);
+                // store into cache area in global_map
+                *$self
+                    .global_map
+                    .borrow_mut()
+                    .get_mut(&v)
+                    .expect("untracked global") = Some($result);
             }
             _ => panic!("ssa violation: trying to write to to initialized value"),
         }
@@ -95,6 +116,9 @@ impl CodeGen<LLVMHostStorage<'static>> for LLVMHostContext<'static> {
     }
 
     fn gen_trap(&mut self, cause: Reg, val: Reg) {
+        // store context before calling trap handler
+        self.store_context();
+
         let cause = read_value!(self, cause);
         let val = read_value!(self, val);
 

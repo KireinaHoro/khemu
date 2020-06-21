@@ -105,6 +105,97 @@ static mut LLVM_CTX: Option<LLVMHostContext> = None;
 static REG_INIT: u64 = 0;
 static REG_INIT_FP: f64 = 0.0;
 
+impl LLVMHostContext<'static> {
+    fn store_context(&mut self) {
+        // store cached values back into global
+        for (k, v) in self.global_map.borrow_mut().iter_mut() {
+            if let Some(iv) = v {
+                debug!(
+                    "Emitting store {} -> {}",
+                    iv.print_to_string(),
+                    k.get_name().to_str().unwrap()
+                );
+                self.builder.build_store(k.as_pointer_value(), *iv);
+                *v = None;
+            }
+        }
+    }
+
+    fn dump_modules(&self) {
+        for x in &self.modules {
+            x.print_to_stderr();
+        }
+    }
+
+    fn dump_reg(&mut self) {
+        // check that all values are stored back into global
+        for (k, v) in self.global_map.borrow().iter() {
+            assert_eq!(*v, None, "found leaked value for global {:?}", k);
+        }
+
+        if let None = self.dump_reg_func {
+            // build func
+            let name = "trap_handler";
+            self.push_block(name, true);
+
+            let module = self.modules.last().unwrap();
+
+            let printf = module.get_function("printf").unwrap_or_else(|| {
+                let char_ptr_type = self.context.i8_type().ptr_type(AddressSpace::Generic);
+                let func_type = self
+                    .context
+                    .i32_type()
+                    .fn_type(&[char_ptr_type.into()], true);
+                module.add_function("printf", func_type, Some(Linkage::External))
+            });
+
+            let mut format_string = String::new();
+            let mut tagged_args = Vec::new();
+            for (k, _) in self.global_map.borrow().iter() {
+                let name = String::from(k.get_name().to_str().unwrap());
+                let val = self.builder.build_load(k.as_pointer_value(), "");
+
+                tagged_args.push((name, val));
+            }
+            tagged_args.sort_by_key(|(n, _)| n.to_owned());
+            let (names, mut args): (Vec<_>, VecDeque<_>) = tagged_args.into_iter().unzip();
+            let names = names
+                .iter()
+                .map(|n| format!("{}=0x%016lx", n))
+                .collect::<Vec<_>>();
+            let mut format_string: String = names
+                .chunks(4)
+                .map(|c| c.join("\t"))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            format_string.push('\n');
+
+            args.push_front(BasicValueEnum::from(
+                self.builder
+                    .build_global_string_ptr(&format_string, "")
+                    .as_pointer_value(),
+            ));
+            let args = args.into_iter().collect::<Vec<_>>();
+
+            self.builder.build_call(printf, args.as_slice(), "");
+            self.builder.build_return(None);
+
+            unsafe {
+                let f: JitFunction<GuestFunc> = self
+                    .execution_engine
+                    .as_ref()
+                    .unwrap()
+                    .get_function(name)
+                    .unwrap();
+                self.dump_reg_func = Some(f);
+            }
+        }
+
+        unsafe { self.dump_reg_func.as_ref().unwrap().call() }
+    }
+}
+
 impl HostContext for LLVMHostContext<'static> {
     type StorageType = LLVMHostStorage<'static>;
     type BlockType = JitFunction<'static, GuestFunc>;
@@ -116,16 +207,11 @@ impl HostContext for LLVMHostContext<'static> {
         tracking: &[Weak<KHVal<Self::StorageType>>],
         exception: Option<DisasException>,
     ) -> Self::BlockType {
-        // TODO(jsteward) generate context restore
-
         // consume TB
         for op in tb.ops.into_iter() {
             debug!("Emitting {}", op);
             self.dispatch(op);
         }
-
-        // TODO(jsteward) generate context store:
-        // TODO(jsteward) check for guest registers, if not global, store to global
 
         // end block, insert return
         self.builder.build_return(None);
@@ -264,71 +350,11 @@ impl HostContext for LLVMHostContext<'static> {
         LLVMHostStorage::Global(glb)
     }
 
-    fn dump_reg(&mut self) {
-        // check that all values are stored back into global
-        for (k, v) in self.global_map.borrow().iter() {
-            assert_eq!(*v, None, "found leaked value for global {:?}", k);
-        }
+    fn handle_trap(&mut self) {
+        info!("Dumping registers");
+        self.dump_reg();
 
-        if let None = self.dump_reg_func {
-            // build func
-            let name = "trap_handler";
-            self.push_block(name, true);
-
-            let module = self.modules.last().unwrap();
-
-            let printf = module.get_function("printf").unwrap_or_else(|| {
-                let char_ptr_type = self.context.i8_type().ptr_type(AddressSpace::Generic);
-                let func_type = self
-                    .context
-                    .i32_type()
-                    .fn_type(&[char_ptr_type.into()], true);
-                module.add_function("printf", func_type, Some(Linkage::External))
-            });
-
-            let mut format_string = String::new();
-            let mut tagged_args = Vec::new();
-            for (k, _) in self.global_map.borrow().iter() {
-                let name = String::from(k.get_name().to_str().unwrap());
-                let val = self.builder.build_load(k.as_pointer_value(), "");
-
-                tagged_args.push((name, val));
-            }
-            tagged_args.sort_by_key(|(n, _)| n.to_owned());
-            let (names, mut args): (Vec<_>, VecDeque<_>) = tagged_args.into_iter().unzip();
-            let names = names
-                .iter()
-                .map(|n| format!("{}=0x%016lx", n))
-                .collect::<Vec<_>>();
-            let mut format_string: String = names
-                .chunks(4)
-                .map(|c| c.join("\t"))
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            format_string.push('\n');
-
-            args.push_front(BasicValueEnum::from(
-                self.builder
-                    .build_global_string_ptr(&format_string, "")
-                    .as_pointer_value(),
-            ));
-            let args = args.into_iter().collect::<Vec<_>>();
-
-            self.builder.build_call(printf, args.as_slice(), "");
-            self.builder.build_return(None);
-
-            unsafe {
-                let f: JitFunction<GuestFunc> = self
-                    .execution_engine
-                    .as_ref()
-                    .unwrap()
-                    .get_function(name)
-                    .unwrap();
-                self.dump_reg_func = Some(f);
-            }
-        }
-
-        unsafe { self.dump_reg_func.as_ref().unwrap().call() }
+        info!("Dumping modules generated so far");
+        self.dump_modules();
     }
 }

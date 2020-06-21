@@ -51,7 +51,7 @@ fn trap_handler<C: HostContext + 'static>(cause: u64, val: u64) {
     let trap_op = TrapOp::from_bits(cause).unwrap();
     warn!("Trap: cause={} val={:#x}", trap_op, val);
 
-    C::get().dump_reg();
+    C::get().handle_trap();
 }
 
 pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
