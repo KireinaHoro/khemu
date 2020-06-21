@@ -13,8 +13,8 @@ use std::rc::Weak;
 
 pub struct DumpIRHostContext {}
 
-// dummy interface, no real allocation
 #[derive(PartialEq)]
+/// Dummy storage, no real allocation.
 pub enum DumpIRHostStorage {
     Label(u64),
     ImmU32(u32),

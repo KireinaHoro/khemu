@@ -420,6 +420,10 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #[derive(Debug)]
+        /// The IR operators definition.
+        ///
+        /// Use the `push_OP` maker functions to generate a specific OP.  To override a default maker,
+        /// specify the op in `override_maker`.  The original generated maker is still available as `_push_OP`.
         pub enum Op<R: crate::ir::storage::HostStorage> {
             #( #unaries )*
             #( #converts )*
@@ -438,6 +442,10 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             }
         }
 
+        /// Methods that the backend needs to implement to emit the IR operators.
+        ///
+        /// Default implementations that invokes `unimplemented!` are provided; backend implementations
+        /// should override them.
         pub trait CodeGen<R: crate::ir::storage::HostStorage> {
             fn dispatch(&mut self, op: Op<R>) {
                 match op {

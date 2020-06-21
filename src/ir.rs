@@ -4,5 +4,7 @@
 
 extern crate paste;
 
+/// The IR operator definition.
 pub mod op;
+/// The IR register storage.
 pub mod storage;

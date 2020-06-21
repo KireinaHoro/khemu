@@ -16,6 +16,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::IndexMut;
 
+/// Loads a guest ELF and creates the frontend context, also known as the disassembler.
 pub fn load_program<R: HostStorage>(
     buffer: Vec<u8>,
     handler: TrapHandler,

@@ -15,7 +15,7 @@ use std::rc::{Rc, Weak};
 
 pub type InsnType = u32;
 
-// disassembly facility
+/// Disassembler context for the ARM64 frontend.
 pub struct Arm64GuestContext<R: HostStorage> {
     map: GuestMap,
     disas_pos: Option<usize>, // addr for next instruction to be disassembled
@@ -44,6 +44,7 @@ pub struct Arm64GuestContext<R: HostStorage> {
 }
 
 impl<R: HostStorage> Arm64GuestContext<R> {
+    /// Create a new ARM64 disassembler context.
     pub fn new(map: GuestMap) -> Self {
         Self {
             map,
@@ -86,6 +87,10 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         u32::from_le_bytes(insn_u8)
     }
 
+    /// Fetch a fixed register, excluding the SP register.
+    ///
+    /// The SP register encoding per ARM64 specification is the same as hardwired zero in some
+    /// contexts.
     pub fn reg(&mut self, r: usize) -> Rc<KHVal<R>> {
         assert!(r < 32);
         if r == 31 {
@@ -95,11 +100,13 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         }
     }
 
+    /// Fetch a fixed register, including the SP register.
     pub fn reg_sp(&self, r: usize) -> Rc<KHVal<R>> {
         assert!(r < 32);
         Rc::clone(&self.xreg[r])
     }
 
+    #[doc(hidden)]
     pub fn set_direct_chain(&mut self) {
         if let Some(_) = self.direct_chain_idx {
             panic!("direct chain set twice in a single translation block")
@@ -107,6 +114,7 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         self.direct_chain_idx = Some(self.ops.len() - 1);
     }
 
+    #[doc(hidden)]
     pub fn set_aux_chain(&mut self) {
         if let Some(_) = self.aux_chain_idx {
             panic!("aux chain set twice in a single translation block")
@@ -114,7 +122,7 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         self.aux_chain_idx = Some(self.ops.len() - 1);
     }
 
-    // clean state for next translation block
+    /// Clean disassembler state for next translation block.
     pub fn clean_state(&mut self) {
         self.disas_pos = None;
         self.start_pc = None;

@@ -17,8 +17,14 @@ use std::path::Path;
 use std::rc::Rc;
 use std::{env, fs};
 
+/// Number of IR operations to generate before interrupting the translation flow and starting a new
+/// translation block.
+///
+/// Note that the resulting translation block may have slightly more than `DEFAULT_TB_SIZE` ops;
+/// the translation block will always split on guest instruction boundaries.
 pub const DEFAULT_TB_SIZE: usize = 4096;
 
+/// Read ELF into byte vector.  The ELF file is specified via commandline argument.
 pub fn read_elf() -> Result<Vec<u8>, String> {
     let args: Vec<_> = env::args().collect();
     let prog_path;
@@ -33,12 +39,12 @@ pub fn read_elf() -> Result<Vec<u8>, String> {
     }
 }
 
-// 2GB guest virtual space
 const GUEST_SIZE: usize = 0x2000_0000;
 
+/// Type of guest virtual address space.
 pub type GuestMap = Rc<RefCell<MmapMut>>;
 
-// returns the base of map
+/// Map guest virtual memory.
 pub fn map_virtual() -> Result<GuestMap, String> {
     MmapOptions::new()
         .len(GUEST_SIZE)
@@ -47,9 +53,14 @@ pub fn map_virtual() -> Result<GuestMap, String> {
         .map_err(|e| format!("failed to map guest virtual space: {}", e))
 }
 
+/// Routine to parse and load an ELF program.
 pub mod loader;
 
+/// Type of a guest trap handler.
+///
+/// The guest trap handler accepts a trap cause `ir::op::TrapOp` and a per-trap-defined value.
 pub type TrapHandler = fn(u64, u64);
+
 static mut START_POSITIONS: Option<VecDeque<usize>> = None;
 
 fn trap_handler<C: HostContext + 'static>(cause: u64, val: u64) {
@@ -71,6 +82,7 @@ fn trap_handler<C: HostContext + 'static>(cause: u64, val: u64) {
     }
 }
 
+/// The main "disassemble-emit-execute" loop.
 pub fn do_work<C: HostContext + 'static>() -> Result<(), String> {
     let elf = read_elf()?;
 

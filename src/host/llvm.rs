@@ -26,6 +26,7 @@ use bitflags::_core::cell::RefMut;
 
 type GuestFunc = unsafe extern "C" fn();
 
+/// Code generator context for the LLVM backend.
 pub struct LLVMHostContext<'ctx> {
     context: &'ctx Context,
     // FIXME(jsteward): how to recycle these?
@@ -44,10 +45,18 @@ pub struct LLVMHostContext<'ctx> {
 }
 
 #[derive(Debug, PartialEq)]
+/// LLVM Storage for IR registers.
+///
+/// Largely resembles the LLVM value categories.  Per the SSA semantics, assigned values cannot be
+/// reassigned; a new one needs to be created instead.
 pub enum LLVMHostStorage<'ctx> {
+    /// A not-yet used register.
     Empty,
+    /// A fixed register.
     Global(GlobalValue<'ctx>),
+    /// Assigned int temporary value.
     IntV(IntValue<'ctx>),
+    /// Assigned float temporary value.
     FloatV(FloatValue<'ctx>),
 }
 

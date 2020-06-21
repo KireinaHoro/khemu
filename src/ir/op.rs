@@ -62,6 +62,7 @@ gen_ops! {
 // the bitfield is designed to support inverting condition or allowing equality
 // with only a single bit toggle.
 bitflags! {
+    /// Condition codes for use in conditional operators.
     pub struct CondOp: u64 {
         // sign-irrelevant
         const NEVER     = 0b0000;
@@ -88,6 +89,7 @@ impl CondOp {
 }
 
 bitflags! {
+    /// Encoding for different trap causes.
     pub struct TrapOp: u64 {
         const LOOKUP_TB = 0;
         const UNDEF_OPCODE = 1;

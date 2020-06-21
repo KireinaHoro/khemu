@@ -41,14 +41,26 @@ cargo run hello
 
 The test is expected to fail, likely panicking with the following message.  The failing point at submission is `host::llvm::make_label`, which is part of the LLVM branch generation milestone.
 
-```
+```text
 thread 'main' panicked at 'not implemented', src/host/llvm.rs:313:9
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
 ## Documentation
 
-_Work in Progress_
+The project is documented via `rustdoc`.  To generate documentation locally,
+
+```bash
+# setup LLVM for Rust
+export LLVM_SYS_100_STRICT_VERSIONING=1
+export LLVM_SYS_100_PREFIX=<your llvm 10 prefix>
+# assume that `hello` is the test executable
+cargo doc
+```
+
+The documentation will be generated in `target/doc`.  A generated copy is included in the submitted archive (not committed to GitHub).
+
+_TODO: live version using GitHub pages_
 
 ## License
 
