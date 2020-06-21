@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Pengcheng Xu <i@jsteward.moe>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};

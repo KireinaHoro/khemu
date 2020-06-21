@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Pengcheng Xu <i@jsteward.moe>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 use super::ir::storage::*;
 use crate::guest::{DisasException, TranslationBlock};
 use crate::runtime::{GuestMap, TrapHandler};

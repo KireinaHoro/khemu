@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Pengcheng Xu <i@jsteward.moe>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 // This is a dummy host that simply dumps the IR without executing them
 
 use crate::guest::{DisasException, TranslationBlock};

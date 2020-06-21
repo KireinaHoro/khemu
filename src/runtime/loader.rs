@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Pengcheng Xu <i@jsteward.moe>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 use crate::guest::arm64::Arm64GuestContext;
 use crate::guest::Disassembler;
 use crate::ir::storage::HostStorage;

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Pengcheng Xu <i@jsteward.moe>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 use crate::guest::DisasContext;
 use crate::ir::storage::{HostStorage, KHVal, MemOp, ValueType};
 use macros::gen_ops;
