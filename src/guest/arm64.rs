@@ -50,7 +50,7 @@ impl<R: HostStorage> Arm64GuestContext<R> {
                         if i == 31 {
                             "sp".to_owned()
                         } else {
-                            format!("x{}", i)
+                            format!("x{:02}", i)
                         },
                         ValueType::U64,
                     ))
