@@ -58,9 +58,7 @@ export LLVM_SYS_100_PREFIX=<your llvm 10 prefix>
 cargo doc
 ```
 
-The documentation will be generated in `target/doc`.  A generated copy is included in the submitted archive (not committed to GitHub).
-
-_TODO: live version using GitHub pages_
+The documentation will be generated in `target/doc/khemu/index.html`.  A generated copy is included in the submitted archive (not committed to GitHub).
 
 ## License
 
