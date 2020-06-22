@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{braced, parse_macro_input, token, Path, Ident, Result, Token};
+use syn::{braced, parse_macro_input, token, Attribute, Ident, Path, Result, Token};
 
 struct GenOpSingle {
     reg_type: Path,
@@ -45,18 +45,21 @@ impl Parse for GenOps {
 }
 
 struct OpRule {
+    doc: Vec<Attribute>,
     rule_type: Ident,
     defs: Punctuated<Ident, Token![,]>,
 }
 
 impl Parse for OpRule {
     fn parse(input: ParseStream) -> Result<Self> {
-        let rule_type: Ident = input.parse()?;
-        let _ = input.parse::<Token![:]>()?;
-        let parser = Punctuated::<Ident, Token![,]>::parse_separated_nonempty;
-        let defs = input.call(parser)?;
-
-        Ok(Self { rule_type, defs })
+        Ok(Self {
+            doc: input.call(Attribute::parse_outer)?,
+            rule_type: input.parse()?,
+            defs: {
+                let _ = input.parse::<Token![:]>()?;
+                input.call(Punctuated::<Ident, Token![,]>::parse_separated_nonempty)?
+            },
+        })
     }
 }
 
@@ -80,13 +83,13 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
             let ru = &rule.rule_type;
             match rule.rule_type.to_string().as_ref() {
                 "unary" => {
-                    unary.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
+                    unary.extend(rule.defs.into_iter().zip(repeat((rule.doc.clone(), reg_type.clone()))));
                 }
                 "convert" => {
-                    convert.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
+                    convert.extend(rule.defs.into_iter().zip(repeat((rule.doc.clone(), reg_type.clone()))));
                 }
                 "binary" => {
-                    binary.extend(rule.defs.into_iter().zip(repeat(reg_type.clone())));
+                    binary.extend(rule.defs.into_iter().zip(repeat((rule.doc.clone(), reg_type.clone()))));
                 }
                 "override_maker" => {
                     override_maker.extend(rule.defs.into_iter());
@@ -102,7 +105,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
                             .emit();
                         return TokenStream::new();
                     }
-                    custom.insert(def, reg_type.clone());
+                    custom.insert(def, (rule.doc.clone(), reg_type.clone()));
                 }
                 _ => {
                     ru.span()
@@ -117,17 +120,18 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let customs = custom
         .iter()
-        .map(|(v, _)| {
+        .map(|(v, (d, _))| {
             let mnemonic = &v[0];
             let iter = v.iter().skip(1);
             quote! {
+                #( #d )*
                 #mnemonic { #( #iter: ::std::rc::Rc<crate::ir::storage::KHVal<R>> ),* },
             }
         })
         .into_iter();
     let custom_makers = custom
         .iter()
-        .map(|(v, t)| {
+        .map(|(v, (_, t))| {
             let mnemonic = &v[0];
             let lower = mnemonic.to_string().to_lowercase();
             let fn_name = if !override_maker.contains(mnemonic) {
@@ -197,8 +201,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let unaries = unary
         .iter()
-        .map(|(m, _)| {
+        .map(|(m, (d, _))| {
             quote! {
+                #( #d )*
                 #m {
                     rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                     rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
@@ -208,7 +213,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let unary_makers = unary
         .iter()
-        .map(|(m, t)| {
+        .map(|(m, (_, t))| {
             let lower = m.to_string().to_lowercase();
             let fn_name = if !override_maker.contains(m) {
                 format_ident!("push_{}", lower)
@@ -270,8 +275,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let converts = convert
         .iter()
-        .map(|(m, _)| {
+        .map(|(m, (d, _))| {
             quote! {
+                #( #d )*
                 #m {
                     rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                     rs: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
@@ -281,7 +287,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let convert_makers = convert
         .iter()
-        .map(|(m, t)| {
+        .map(|(m, (_, t))| {
             let lower = m.to_string().to_lowercase();
             let fn_name = if !override_maker.contains(m) {
                 format_ident!("push_{}", lower)
@@ -342,8 +348,9 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
 
     let binaries = binary
         .iter()
-        .map(|(m, _)| {
+        .map(|(m, (d, _))| {
             quote! {
+                #( #d )*
                 #m {
                     rd: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
                     rs1: ::std::rc::Rc<crate::ir::storage::KHVal<R>>,
@@ -354,7 +361,7 @@ pub fn gen_ops(input: TokenStream) -> TokenStream {
         .into_iter();
     let binary_makers = binary
         .iter()
-        .map(|(m, t)| {
+        .map(|(m, (_, t))| {
             let lower = m.to_string().to_lowercase();
             let fn_name = if !override_maker.contains(m) {
                 format_ident!("push_{}", lower)
