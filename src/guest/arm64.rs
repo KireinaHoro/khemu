@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::iter::*;
 use std::rc::{Rc, Weak};
 
-pub type InsnType = u32;
+type InsnType = u32;
 
 /// Disassembler context for the ARM64 frontend.
 pub struct Arm64GuestContext<R: HostStorage> {
@@ -45,6 +45,10 @@ pub struct Arm64GuestContext<R: HostStorage> {
 
 impl<R: HostStorage> Arm64GuestContext<R> {
     /// Create a new ARM64 disassembler context.
+    ///
+    /// Note that this will create fixed registers (x0-x31, nzcv) for the disassembler, so make sure
+    /// that the host context has been [initialized](../../host/trait.HostContext.html#tymethod.init)
+    /// before calling this method, or the host storage creation for registers will fail.
     pub fn new(map: GuestMap) -> Self {
         Self {
             map,
@@ -79,7 +83,10 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         }
     }
 
-    fn next_insn(&mut self) -> InsnType {
+    /// Fetch the next instruction from the guest address space.
+    ///
+    /// For ARM64 this is bound to return a `u32` for 4-byte instructions.
+    pub fn next_insn(&mut self) -> InsnType {
         let addr = self.disas_pos.unwrap();
         let insn_u8 = self.map.borrow().index(addr..addr + 4).try_into().unwrap();
         self.disas_pos = Some(addr + 4);
@@ -106,24 +113,21 @@ impl<R: HostStorage> Arm64GuestContext<R> {
         Rc::clone(&self.xreg[r])
     }
 
-    #[doc(hidden)]
-    pub fn set_direct_chain(&mut self) {
+    fn set_direct_chain(&mut self) {
         if let Some(_) = self.direct_chain_idx {
             panic!("direct chain set twice in a single translation block")
         }
         self.direct_chain_idx = Some(self.ops.len() - 1);
     }
 
-    #[doc(hidden)]
-    pub fn set_aux_chain(&mut self) {
+    fn set_aux_chain(&mut self) {
         if let Some(_) = self.aux_chain_idx {
             panic!("aux chain set twice in a single translation block")
         }
         self.aux_chain_idx = Some(self.ops.len() - 1);
     }
 
-    /// Clean disassembler state for next translation block.
-    pub fn clean_state(&mut self) {
+    fn clean_state(&mut self) {
         self.disas_pos = None;
         self.start_pc = None;
         self.direct_chain_idx = None;
@@ -287,6 +291,8 @@ macro_rules! disas_stub {
     ( $($handler:ident),* ) => {
         $(
             paste::item! {
+                /// Stub for disassembling instructions of a specific opcode that are not yet
+                /// implemented.
                 pub fn [< disas_ $handler >]<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, insn: InsnType) -> Result<(), DisasException> {
                     Err(DisasException::Unexpected(format!("insn 0x{:0x}: {} not implemented", insn, stringify!($handler))))
                 }

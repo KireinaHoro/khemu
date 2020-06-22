@@ -18,7 +18,10 @@ pub struct DumpIRHostContext {
 }
 
 #[derive(PartialEq)]
-/// Dummy storage, no real allocation.
+/// Dummy storage that only notes input constants for IR printing purposes.
+///
+/// No actual memory allocation for intermediate results will happen; they are denoted with the
+/// `Unassigned` variant.
 pub enum DumpIRHostStorage {
     Label(u64),
     ImmU32(u32),
@@ -77,6 +80,7 @@ impl HostStorage for DumpIRHostStorage {
 }
 
 impl HostBlock for String {
+    /// Dump the string contents of the dummy generated block.
     unsafe fn execute(&self) {
         print!("{}", self);
     }
@@ -85,7 +89,9 @@ impl HostBlock for String {
 static mut DUMP_IR_CTX: Option<DumpIRHostContext> = None;
 
 impl HostContext for DumpIRHostContext {
+    /// Use dummy storage for IR registers.
     type StorageType = DumpIRHostStorage;
+    /// Use strings that hold IR printout as emitted blocks.
     type BlockType = String;
 
     fn emit_block(

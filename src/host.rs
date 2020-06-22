@@ -50,11 +50,11 @@ pub trait HostContext {
 
     /// Create a label value.
     fn make_label(&self) -> Self::StorageType;
-    /// Create a `u32` value.
+    /// Create a `u32` value.  Backends may implement caching to avoid allocating duplicate values.
     fn make_u32(&self, v: u32) -> Self::StorageType;
-    /// Create a `u64` value.
+    /// Create a `u64` value.  Backends may implement caching to avoid allocating duplicate values.
     fn make_u64(&self, v: u64) -> Self::StorageType;
-    /// Create a `f64` value.
+    /// Create a `f64` value.  Backends may implement caching to avoid allocating duplicate values.
     fn make_f64(&self, v: f64) -> Self::StorageType;
     /// Create a named value for fixed registers.
     fn make_named(&self, name: String, ty: ValueType) -> Self::StorageType;

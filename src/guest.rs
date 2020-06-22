@@ -71,10 +71,8 @@ pub struct TranslationBlock<R: HostStorage> {
     pub start_pc: usize,
     /// Generated IR operations.
     pub ops: Vec<Op<R>>,
-    #[doc(hidden)]
-    pub direct_chain_idx: Option<usize>, // taken branch
-    #[doc(hidden)]
-    pub aux_chain_idx: Option<usize>, // not taken branch
+    direct_chain_idx: Option<usize>, // taken branch
+    aux_chain_idx: Option<usize>,    // not taken branch
 }
 
 /// Disassembler functions to be invoked from the runtime.

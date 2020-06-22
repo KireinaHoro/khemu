@@ -10,23 +10,29 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
 
-// trait for host storage assignment
-// all implementers must provide support for immediate numbers
-// a real host storage will probably support registers and memory as well
+/// Underlying storage for IR registers.
 pub trait HostStorage: Default + Display + PartialEq {
+    /// Type of the corresponding host context.
     type HostContext: HostContext<StorageType = Self> + 'static;
 
+    /// Attempt to cast the storage to constant `u32` for constant propagation.
     fn try_as_u32(&self) -> Option<u32>;
+    /// Attempt to cast the storage to constant `u64` for constant propagation.
     fn try_as_u64(&self) -> Option<u64>;
+    /// Attempt to cast the storage to constant `f64` for constant propagation.
     fn try_as_f64(&self) -> Option<f64>;
 }
 
-// valid value types
+/// Valid value types for an IR register.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ValueType {
-    Label, // jump target
+    /// Fake value useful for dealing with jump targets.
+    Label,
+    /// 32bit word (`l` suffix in operators)
     U32,
+    /// 64bit word (no suffix in operators)
     U64,
+    /// Double word (`d` suffix in operators)
     F64,
 }
 
@@ -36,15 +42,17 @@ impl Display for ValueType {
     }
 }
 
-// Denotes a value used in IR.  May correspond to
+/// IR register in SSA form.
 #[derive(Debug)]
 pub struct KHVal<R: HostStorage> {
+    /// Data type of the register.
     pub ty: ValueType,
+    /// Backend storage of the register.
     pub storage: RefCell<R>,
 }
 
 impl<R: HostStorage> KHVal<R> {
-    // allocate value with unassigned storage
+    /// Allocate new unassigned register from the frontend.
     pub fn new(ty: ValueType) -> Self {
         Self {
             ty,
@@ -52,6 +60,7 @@ impl<R: HostStorage> KHVal<R> {
         }
     }
 
+    /// Allocate new named register from the frontend.
     pub fn named(name: String, ty: ValueType) -> Self {
         Self {
             ty,
@@ -59,6 +68,7 @@ impl<R: HostStorage> KHVal<R> {
         }
     }
 
+    /// Allocate new label from the frontend.
     pub fn label() -> Self {
         Self {
             ty: ValueType::Label,
@@ -66,7 +76,7 @@ impl<R: HostStorage> KHVal<R> {
         }
     }
 
-    // used to construct U32 value
+    /// Allocate `U32` immediate value from the frontend.
     pub fn u32(v: u32) -> Self {
         Self {
             ty: ValueType::U32,
@@ -74,7 +84,7 @@ impl<R: HostStorage> KHVal<R> {
         }
     }
 
-    // used to construct U64 value
+    /// Allocate `U64` immediate value from the frontend.
     pub fn u64(v: u64) -> Self {
         Self {
             ty: ValueType::U64,
@@ -82,7 +92,7 @@ impl<R: HostStorage> KHVal<R> {
         }
     }
 
-    // used to construct F64 value
+    /// Allocate `F64` immediate value from the frontend.
     pub fn f64(v: f64) -> Self {
         Self {
             ty: ValueType::F64,
@@ -104,8 +114,8 @@ impl<R: HostStorage> Display for KHVal<R> {
     }
 }
 
-// used in Load and Store ops to denote exact memory operation
 bitflags! {
+    /// Used in Load and Store ops to denote the exact memory operation.
     pub struct MemOp: u64 {
         const SIZE_8    = 0b00;
         const SIZE_16   = 0b01;
@@ -141,6 +151,9 @@ bitflags! {
 }
 
 impl MemOp {
+    /// Construct `MemOp` from memory size.
+    ///
+    /// Only access sizes of 1, 2, 4, and 8 are supported.
     pub fn from_size(bytes: u64) -> Self {
         match bytes {
             1 => Self::SIZE_8,
@@ -151,6 +164,7 @@ impl MemOp {
         }
     }
 
+    /// Construct `MemOp` from signedness.
     pub fn from_sign(sign: bool) -> Self {
         if sign {
             Self::SIGN_EXTEND
@@ -159,6 +173,7 @@ impl MemOp {
         }
     }
 
+    /// Retrieve the access size from `MemOp`.
     pub fn get_size(&self) -> u64 {
         match *self & Self::SIZE_MASK {
             Self::SIZE_8 => 1,
@@ -169,6 +184,7 @@ impl MemOp {
         }
     }
 
+    /// Retrieve the signedness from `MemOp`.
     pub fn get_sign(&self) -> bool {
         (*self & Self::SIGN_EXTEND).bits != 0
     }

@@ -39,7 +39,8 @@ pub fn read_elf() -> Result<Vec<u8>, String> {
     }
 }
 
-const GUEST_SIZE: usize = 0x2000_0000;
+/// Guest address space size.  Default to 512MB.
+pub const GUEST_SIZE: usize = 0x2000_0000;
 
 /// Type of guest virtual address space.
 pub type GuestMap = Rc<RefCell<MmapMut>>;

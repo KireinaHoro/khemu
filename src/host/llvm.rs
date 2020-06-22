@@ -107,6 +107,7 @@ impl HostStorage for LLVMHostStorage<'static> {
 }
 
 impl HostBlock for JitFunction<'_, GuestFunc> {
+    /// Execute the generated LLVM JIT function.
     unsafe fn execute(&self) {
         self.call()
     }
@@ -210,7 +211,9 @@ impl LLVMHostContext<'static> {
 }
 
 impl HostContext for LLVMHostContext<'static> {
+    /// Use LLVM values for IR register storage.
     type StorageType = LLVMHostStorage<'static>;
+    /// Use LLVM JIT function as emitted block.
     type BlockType = JitFunction<'static, GuestFunc>;
 
     fn emit_block(
