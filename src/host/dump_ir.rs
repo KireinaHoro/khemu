@@ -8,10 +8,14 @@ use crate::guest::{DisasException, TranslationBlock};
 use crate::host::*;
 use crate::ir::storage::*;
 use crate::runtime::{GuestMap, TrapHandler};
+use std::cell::RefCell;
 use std::fmt::{Display, Error, Formatter};
 use std::rc::Weak;
 
-pub struct DumpIRHostContext {}
+/// Dummy context for IR printout.
+pub struct DumpIRHostContext {
+    label_counter: RefCell<u64>,
+}
 
 #[derive(PartialEq)]
 /// Dummy storage, no real allocation.
@@ -100,7 +104,9 @@ impl HostContext for DumpIRHostContext {
 
     fn init(_: GuestMap, _: TrapHandler) {
         unsafe {
-            DUMP_IR_CTX = Some(Self {});
+            DUMP_IR_CTX = Some(Self {
+                label_counter: RefCell::new(0),
+            });
         }
     }
 
@@ -113,12 +119,8 @@ impl HostContext for DumpIRHostContext {
     }
 
     fn make_label(&self) -> Self::StorageType {
-        static mut COUNTER: u64 = 0;
-        let ret;
-        unsafe {
-            ret = DumpIRHostStorage::Label(COUNTER);
-            COUNTER += 1;
-        }
+        let ret = DumpIRHostStorage::Label(*self.label_counter.borrow());
+        *self.label_counter.borrow_mut() += 1;
         ret
     }
 
