@@ -95,6 +95,7 @@ bitflags! {
         const UNDEF_OPCODE = 1;
         const ACCESS_FAULT = 2;
         const SYSCALL = 3;
+        const DYNAMIC = 4;
     }
 }
 
@@ -105,6 +106,7 @@ impl Display for TrapOp {
             TrapOp::UNDEF_OPCODE => "undef_opcode",
             TrapOp::ACCESS_FAULT => "access_fault",
             TrapOp::SYSCALL => "syscall",
+            TrapOp::DYNAMIC => "dynamic",
             _ => unreachable!(),
         };
 
