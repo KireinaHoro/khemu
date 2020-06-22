@@ -43,14 +43,14 @@ gen_ops! {
         override_maker: ExtrU, ExtrS, Depos; // to accept immediate value for ofs len
     },
     ValueType::U32 {  // w - 32bit word
-        unary: Negw, Movw;
+        unary: Negl, Movl;
         convert: Extrl, Extrh;    // convert 64bit to 32bit
-        binary: Subw;  // arithmetic
-        binary: Andw, Orw, Xorw, Andcw;  // logical
-        binary: Rotrw; // shifts / rotates
-        binary: Sarw; // shifts
-        custom: Add2w, rl, rh, al, ah, bl, bh; // [rh:rl] = [ah:al] + [bh:bl]
-        override_maker: Movw;
+        binary: Subl;  // arithmetic
+        binary: Andl, Orl, Xorl, Andcl;  // logical
+        binary: Rotrl; // shifts / rotates
+        binary: Sarl; // shifts
+        custom: Add2l, rl, rh, al, ah, bl, bh;
+        override_maker: Movl;
     },
     ValueType::F64 {  // d - double float
         unary: Movd;

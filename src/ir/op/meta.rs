@@ -160,7 +160,7 @@ impl<R: HostStorage> Op<R> {
         }
         match rd.ty {
             ValueType::U64 => Op::_push_mov(ctx, rd, rs),
-            ValueType::U32 => Op::_push_movw(ctx, rd, rs),
+            ValueType::U32 => Op::_push_movl(ctx, rd, rs),
             ValueType::F64 => Op::_push_movd(ctx, rd, rs),
             _ => unreachable!(),
         }

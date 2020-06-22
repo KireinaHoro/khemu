@@ -100,7 +100,7 @@ fn set_nz64<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, v: &Rc<KHVal<R>>) {
     let (nf, zf, _, _) = get_flags(ctx);
     assert_eq!(v.ty, ValueType::U64);
     Op::push_extr(ctx, &zf, &nf, v);
-    Op::push_orw(ctx, &zf, &zf, &nf);
+    Op::push_orl(ctx, &zf, &zf, &nf);
 }
 
 // generate add with condition code modification
@@ -134,11 +134,11 @@ pub fn do_add_cc<R: HostStorage>(
         let zero = ctx.alloc_u32(0);
         Op::push_extrl(ctx, &t0_32, t0);
         Op::push_extrl(ctx, &t1_32, t1);
-        Op::push_add2w(ctx, &nf, &cf, &t0_32, &zero, &t1_32, &zero);
+        Op::push_add2l(ctx, &nf, &cf, &t0_32, &zero, &t1_32, &zero);
         Op::push_mov(ctx, &zf, &nf);
-        Op::push_xorw(ctx, &vf, &nf, &t0_32);
-        Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
-        Op::push_andcw(ctx, &vf, &vf, &tmp);
+        Op::push_xorl(ctx, &vf, &nf, &t0_32);
+        Op::push_xorl(ctx, &tmp, &t0_32, &t1_32);
+        Op::push_andcl(ctx, &vf, &vf, &tmp);
         Op::push_extulq(ctx, dest, &nf);
     }
 }
@@ -173,12 +173,12 @@ pub fn do_sub_cc<R: HostStorage>(
 
         Op::push_extrl(ctx, &t0_32, t0);
         Op::push_extrl(ctx, &t1_32, t1);
-        Op::push_subw(ctx, &nf, &t0_32, &t1_32);
+        Op::push_subl(ctx, &nf, &t0_32, &t1_32);
         Op::push_mov(ctx, &zf, &nf);
         Op::push_setc(ctx, &cf, &t0_32, &t1_32, CondOp::GEU);
-        Op::push_xorw(ctx, &vf, &nf, &t0_32);
-        Op::push_xorw(ctx, &tmp, &t0_32, &t1_32);
-        Op::push_andcw(ctx, &vf, &vf, &tmp);
+        Op::push_xorl(ctx, &vf, &nf, &t0_32);
+        Op::push_xorl(ctx, &tmp, &t0_32, &t1_32);
+        Op::push_andcl(ctx, &vf, &vf, &tmp);
         Op::push_extulq(ctx, dest, &nf);
     }
 }
@@ -218,23 +218,23 @@ pub fn test_cc<R: HostStorage>(ctx: &mut Arm64GuestContext<R>, cc: u32) -> Arm64
             // hi: C && !Z; ls: !(C && !Z)
             cond = CondOp::NE;
             value = ctx.alloc_val(ValueType::U32);
-            Op::push_negw(ctx, &value, &cf);
-            Op::push_andw(ctx, &value, &value, &zf);
+            Op::push_negl(ctx, &value, &cf);
+            Op::push_andl(ctx, &value, &value, &zf);
         }
         10 | 11 => {
             // ge: N ^ V == 0; lt: N ^ V != 0
             cond = CondOp::GE;
             value = ctx.alloc_val(ValueType::U32);
-            Op::push_xorw(ctx, &value, &vf, &nf);
+            Op::push_xorl(ctx, &value, &vf, &nf);
         }
         12 | 13 => {
             // gt: !Z && N == V; Z || N != V
             cond = CondOp::NE;
             value = ctx.alloc_val(ValueType::U32);
             let shift = ctx.alloc_u32(31);
-            Op::push_xorw(ctx, &value, &vf, &nf);
-            Op::push_sarw(ctx, &value, &value, &shift);
-            Op::push_andcw(ctx, &value, &zf, &value);
+            Op::push_xorl(ctx, &value, &vf, &nf);
+            Op::push_sarl(ctx, &value, &value, &shift);
+            Op::push_andcl(ctx, &value, &zf, &value);
         }
         14 | 15 => {
             // always
@@ -315,7 +315,7 @@ pub fn do_shift<R: HostStorage>(
                 let t1 = ctx.alloc_val(ValueType::U32);
                 Op::push_extrl(ctx, &t0, src);
                 Op::push_extrl(ctx, &t1, shift_amount);
-                Op::push_rotrw(ctx, &t0, &t0, &t1);
+                Op::push_rotrl(ctx, &t0, &t0, &t1);
                 Op::push_extulq(ctx, dest, &t0);
             }
         }
@@ -362,7 +362,7 @@ pub fn do_ext_and_shift_reg<R: HostStorage>(
     (if is_signed {
         match extsize {
             0 => Op::push_extsbq,
-            1 => Op::push_extswq,
+            1 => Op::push_extslq,
             2 => Op::push_extslq,
             3 => Op::push_mov,
             _ => unreachable!(),
@@ -370,7 +370,7 @@ pub fn do_ext_and_shift_reg<R: HostStorage>(
     } else {
         match extsize {
             0 => Op::push_extubq,
-            1 => Op::push_extuwq,
+            1 => Op::push_extulq,
             2 => Op::push_extulq,
             3 => Op::push_mov,
             _ => unreachable!(),
